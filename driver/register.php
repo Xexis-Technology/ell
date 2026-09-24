@@ -41,11 +41,11 @@ ob_start();
 <?php else: ?>
 <?php if ($error): ?><div class="alert alert-err mt-4"><?= e($error) ?></div><?php endif; ?>
 <form method="post" enctype="multipart/form-data" class="card p-5 mt-4 space-y-3"><?= csrf_field() ?>
-<div><label class="label" for="name">Full name</label><input id="name" name="name" class="input" required></div>
-<div><label class="label" for="email">Email</label><input id="email" type="email" name="email" class="input" required></div>
-<div><label class="label" for="phone">Mobile</label><input id="phone" name="phone" class="input" required></div>
-<div><label class="label" for="password">Password (min 8)</label><input id="password" type="password" name="password" class="input" required></div>
-<div><label class="label" for="reference">Reference</label><input id="reference" name="reference" class="input"></div>
+<div><label class="label" for="name">Full name</label><input id="name" name="name" class="input" required placeholder="Jane Smith"></div>
+<div><label class="label" for="email">Email</label><input id="email" type="email" name="email" class="input" required placeholder="you@example.com"></div>
+<div><label class="label" for="phone">Mobile</label><input id="phone" name="phone" class="input" required placeholder="+1 555 010 2030"></div>
+<div><label class="label" for="password">Password (min 8)</label><input id="password" type="password" name="password" class="input" required placeholder="Choose a password"></div>
+<div><label class="label" for="reference">Reference</label><input id="reference" name="reference" class="input" placeholder="Referral name or code"></div>
 <div><label class="label" for="document">License document (jpg/png/pdf)</label><input id="document" type="file" name="document" class="input" accept=".jpg,.jpeg,.png,.pdf"></div>
 <button class="btn-gold touch-btn">Register</button></form>
 <?php endif; ?>

@@ -32,8 +32,8 @@ ob_start();
 <h1 class="font-display text-3xl text-[#F3D4A6]">Profile</h1>
 <div class="ride-card mt-4 text-sm"><p><strong>Name:</strong> <?= e($d['name']) ?></p><p><strong>Email:</strong> <?= e($d['email']) ?></p><p><strong>Status:</strong> <?= e($d['status']) ?></p></div>
 <form method="post" enctype="multipart/form-data" class="ride-card space-y-2"><?= csrf_field() ?>
-<div><label class="label" for="phone">Mobile</label><input id="phone" name="phone" class="input" value="<?= e((string)($d['phone'] ?? '')) ?>"></div>
-<div><label class="label" for="payout_reference">Payout information</label><input id="payout_reference" name="payout_reference" class="input" value="<?= e((string)($d['payout_reference'] ?? '')) ?>"></div>
+<div><label class="label" for="phone">Mobile</label><input id="phone" name="phone" class="input" placeholder="+1 555 010 2030" value="<?= e((string)($d['phone'] ?? '')) ?>"></div>
+<div><label class="label" for="payout_reference">Payout information</label><input id="payout_reference" name="payout_reference" class="input" placeholder="Bank / handle for payouts" value="<?= e((string)($d['payout_reference'] ?? '')) ?>"></div>
 <div><label class="label" for="doc_type">Document type</label><input id="doc_type" name="doc_type" class="input" placeholder="license / insurance"></div>
 <div><label class="label" for="document">Upload document</label><input id="document" type="file" name="document" class="input" accept=".jpg,.jpeg,.png,.pdf"></div>
 <button class="btn-gold touch-btn">Save</button></form>

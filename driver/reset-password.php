@@ -29,7 +29,7 @@ ob_start();
 <?php if ($error): ?><div class="alert alert-err mt-4"><?= e($error) ?></div><?php endif; ?>
 <form method="post" class="card p-5 mt-4 space-y-3"><?= csrf_field() ?>
 <input type="hidden" name="token" value="<?= e($token) ?>">
-<div><label class="label" for="password">New password (min 8)</label><input id="password" type="password" name="password" class="input" required></div>
+<div><label class="label" for="password">New password (min 8)</label><input id="password" type="password" name="password" class="input" required placeholder="Choose a new password"></div>
 <button class="btn-gold touch-btn">Update password</button></form>
 <?php endif; ?>
 <?php

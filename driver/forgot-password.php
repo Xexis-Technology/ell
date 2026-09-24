@@ -20,7 +20,7 @@ ob_start();
 <h1 class="font-display text-3xl text-[#F3D4A6]">Forgot password</h1>
 <?php if ($message): ?><div class="alert alert-ok mt-4"><?= e($message) ?></div><?php endif; ?>
 <form method="post" class="card p-5 mt-4 space-y-3"><?= csrf_field() ?>
-<div><label class="label" for="email">Driver account email</label><input id="email" type="email" name="email" class="input" required></div>
+<div><label class="label" for="email">Driver account email</label><input id="email" type="email" name="email" class="input" required placeholder="you@example.com"></div>
 <button class="btn-gold touch-btn">Send reset link</button></form>
 <?php
 $content = ob_get_clean();

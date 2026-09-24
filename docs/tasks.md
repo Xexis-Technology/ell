@@ -14,8 +14,74 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 - Hourly restriction: hours clamped min 2 client-side (more allowed, never less; server already enforced). Status: Completed.
 - Scrollbars removed (tabs row + journey cards) via .no-scrollbar utility. Layout polish on widget. Status: Completed.
 
+## 2026-09-24 — Journeys/How-it-works gap + rail fixes (owner request)
+- Journeys section gained bottom breathing room; How-it-works rail replaced fragile pseudo-element with an explicit span pinned to icon centers (top/bottom 26px), and hollow icons given solid backing so the line passes behind them, not through. Verified 200 + tests green. Status: Completed.
+
+## 2026-09-24 — How-it-works reference layout (owner request, layout only)
+- Rebuilt as centered header + photo with floating Fixed-pricing pill and sample trip-slip card + vertical icon steps (gold first icon, connecting line). Our 4 steps, copy, dark champagne system. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Auth pages index-style header (owner request)
+- Public layout gained an index header variant (same links, pill, hamburger, sticky bar); all 4 auth pages use it. Other pages keep the default header. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Auth pages redesign (owner request, frontend-design)
+- All 4 auth pages rebuilt as split members'-entrance cards (photo panel + form, our colors/copy, mobile stacks); logic untouched; register now preserves typed input on error. Login flow re-verified over HTTP + tests green. Status: Completed.
+
+## 2026-09-24 — Removed views/public_includes (owner request)
+- Re-inlined header/footer into public layout (same index-style design incl. mobile menu) and deleted the partials folder; zero references remain; pages 200 + tests green. Status: Completed.
+
+## 2026-09-24 — Shared public header/footer partials (owner request)
+- New views/public_includes/header.php + footer.php in index-page style (wordmark, links, auth-aware CTAs, mobile hamburger menu — previously missing on inner pages); public layout now includes them so every public page shares one header/footer. Verified on 4 pages + home + tests green. Status: Completed.
+
+## 2026-09-24 — Services trim + two-button cards (owner request)
+- Removed category strip, stats and fleet showcase (plus dead queries); header CTA is now Book now; service cards carry gold Book + outlined Read more buttons. Verified + tests green. Status: Completed.
+
+## 2026-09-24 — Services page reference-layout rebuild (owner request, layout only)
+- Rebuilt as hero panel + category marquee + about w/ floating card + real DB stats + 5 service cards (icon, Read more, Book) + why-us accordion + fleet showcase. All data real, our theme/copy. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Services index redesign + index header (owner request, frontend-design)
+- Rebuilt as route-board rows (SVC·01–05 incl. Direct Contract, fact chips, per-service CTAs) + index header variant. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Contact reference-layout rebuild (owner request, layout only)
+- Rounded panel (headline + org info + Book CTA / form with name, phone, email, message), reassurance strip, 4 fact columns; index header; submit flow verified over HTTP + tests green. Status: Completed.
+
+## 2026-09-24 — FAQ reference-layout rebuild (owner request, layout only)
+- Centered header + contact line, 4 category pills filtering 14 real Q&As (booking, pricing & payment, rides, account) with icon squares and expandable rows, CMS body preserved below. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Footer redesign + working newsletter (owner request, layout only)
+- New footer: centered newsletter block (validated subscribe, PRG, duplicate-safe) + dark rounded panel (brand, org contact/socials from settings, 3 link columns, car photo). New newsletter_subscribers table (schema + live). Admin notifications page manages subscribers (unsubscribe). E2E verified (subscribe, message, dupe) + new test. Suite 13/45 green. Status: Completed.
+
+## 2026-09-24 — Fleet Book/View buttons + detail page (owner request)
+- Cards now carry gold Book (→ booking) + outlined View (→ services/fleet.php?vehicle=N); new detail page with photo, year/seats/luggage/rates, Book + group-inquiry CTAs, sibling vehicles, per-vehicle SEO, 404 handling; shared vehicle_photo() helper. Verified 200/404 + tests green. Status: Completed.
+
+## 2026-09-24 — Fleet + Trust/FAQ redesign (owner request)
+- Fleet: photo cards per vehicle (category-mapped car images + fallback), year/seats/bags, live per-mile + hourly rates, Book link; header + Book-your-ride link. Trust: 2×2 mini-cards (gold discs) + native FAQ accordion with 4 real Q&As. Verified all 6 vehicles render + tests green. Status: Completed.
+
+## 2026-09-24 — Journeys interactive showcase (owner: new design)
+- Replaced panels with selector + feature panel (4 services, real facts/prices/links, swipeable options on mobile). Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Journeys back to panel layout (owner request; rule kept: layout only)
+- Restored 4 full-bleed photo panels per the reference layout, with our own titles, descriptions, champagne/gold system and real links (Groups → inquiry). Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Journeys remade as original route-ticket roster (owner rule: layout-only references)
+- Replaced copied photo panels with original design: ELL·101–104 ticket rows with pickup-dot → line → destination-square motif, real route facts, live from-prices, hover arrow; our content/colors throughout. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Journeys full-bleed panels (owner request, reference image)
+- Rebuilt Signature Journeys as 4 edge-to-edge photo panels (01 Point-to-Point, 02 Airport Transportation, 03 Hourly Chauffeur, 04 Corporate → group inquiry) with gold numerals, serif overlay titles, hairline dividers, hover zoom; 2-col tablet, stacked mobile. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Spinner time picker (owner request, reference layout)
+- Time picker rebuilt like reference: hour + minute spinner columns (chevron buttons, wrap-around, 5-min steps), AM/PM segmented toggle, live preview, gold OK (commits) + ghost Cancel (discards); no seconds. Reopens from current selection. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Calendar/time picker upgrades (owner request)
+- Today is bold champagne with gold ring in the calendar; time picker rebuilt as AM/PM + hours column (1–12) + minutes column (00/15/30/45) with live preview, reopening restores prior selection. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Date/time dropdown popups (owner request)
+- Native date/time inputs replaced with popup pickers: month calendar (past days disabled, no pre-current-month nav) + 30-min slot grid with AM/PM labels; friendly display values, hidden fields submit; missing selection blocks submit with inline message. Verified prefill + tests green. Status: Completed.
+
 ## 2026-09-24 — Location popup single-search + chips (owner request)
 - Merged the two search bars into one (filters list; Enter or Use-button submits typed text as custom address); Road/Airport toggle chips filter the list (toggle off returns to all); list scrollbar hidden via no-scrollbar. Verified live. Status: Completed.
+
+## 2026-09-24 — Homepage blank-page fix (critical)
+- Sticky header opened with <header> but closed with </div>, trapping the entire page inside a display:none element. Fixed closing tag; verified div 97/97, header 2/2, all sections render, tests green. Status: Completed.
 
 ## 2026-09-24 — Stops + hourly drop-off rules (owner request)
 - Extra stops locked to One Way only (round trip shows none; switching clears); hourly drop-off auto-fills from pickup via same-as-pickup checkbox, unchecking reveals the drop field. Verified live + tests green. Status: Completed.

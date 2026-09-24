@@ -112,8 +112,8 @@ ob_start();
     <div x-show="service === 'airport'"><label class="label" for="airport_direction">Airport direction</label>
       <select id="airport_direction" name="airport_direction" class="input"><option value="">Select…</option><option value="to_airport" <?= $prefDir === 'to_airport' ? 'selected' : '' ?>>Address → Airport</option><option value="from_airport" <?= $prefDir === 'from_airport' ? 'selected' : '' ?>>Airport → Address</option></select></div>
     <div class="grid md:grid-cols-2 gap-4">
-      <div><label class="label" for="pickup_location">Pickup</label><input id="pickup_location" name="pickup_location" class="input" required value="<?= e($prefPickup) ?>"></div>
-      <div><label class="label" for="destination_location">Destination</label><input id="destination_location" name="destination_location" class="input" required value="<?= e($prefDest) ?>"></div>
+      <div><label class="label" for="pickup_location">Pickup</label><input id="pickup_location" name="pickup_location" class="input" required placeholder="Street, City" value="<?= e($prefPickup) ?>"></div>
+      <div><label class="label" for="destination_location">Destination</label><input id="destination_location" name="destination_location" class="input" required placeholder="Street, City" value="<?= e($prefDest) ?>"></div>
     </div>
     <div><label class="label">Additional stops (max 6)</label>
       <div id="stops" class="space-y-2">
@@ -147,12 +147,12 @@ ob_start();
       <label class="text-sm block"><input type="checkbox" name="addon_child_seat" value="1"> Child Seat</label>
       <label class="text-sm block"><input type="checkbox" name="addon_booster_seat" value="1"> Booster Seat</label>
     </fieldset>
-    <div><label class="label" for="coupon_code">Coupon (optional)</label><input id="coupon_code" name="coupon_code" class="input" placeholder="Code"></div>
+    <div><label class="label" for="coupon_code">Coupon (optional)</label><input id="coupon_code" name="coupon_code" class="input" placeholder="Discount code"></div>
     <?php if (!current_user('customer')): ?>
     <div class="grid md:grid-cols-3 gap-4">
-      <div><label class="label" for="guest_name">Full name</label><input id="guest_name" name="guest_name" class="input" required></div>
-      <div><label class="label" for="guest_email">Email</label><input id="guest_email" type="email" name="guest_email" class="input" required></div>
-      <div><label class="label" for="guest_phone">Phone</label><input id="guest_phone" name="guest_phone" class="input"></div>
+      <div><label class="label" for="guest_name">Full name</label><input id="guest_name" name="guest_name" class="input" required placeholder="Jane Smith"></div>
+      <div><label class="label" for="guest_email">Email</label><input id="guest_email" type="email" name="guest_email" class="input" required placeholder="you@example.com"></div>
+      <div><label class="label" for="guest_phone">Phone</label><input id="guest_phone" name="guest_phone" class="input" placeholder="+1 555 010 2030"></div>
     </div>
     <p class="text-xs text-[#AB8868]">Booking as guest. <a class="underline" href="<?= url('auth/register.php') ?>">Create an account</a> to manage bookings. See <a class="underline" href="<?= url('legal/terms.php') ?>">Terms</a>.</p>
     <?php endif; ?>

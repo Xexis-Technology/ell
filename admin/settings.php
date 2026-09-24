@@ -41,14 +41,14 @@ ob_start();
   <h3 class="label">General / SEO / Organization</h3>
   <div class="grid md:grid-cols-2 gap-3">
   <?php foreach (['site_title','meta_description','meta_keywords','gsc_verification','ga_id','fb_pixel','org_name','org_phone','org_email','org_address','social_facebook','social_instagram','social_x','currency'] as $k): ?>
-    <div><label class="label" for="s-<?= e($k) ?>"><?= e($k) ?></label><input id="s-<?= e($k) ?>" name="<?= e($k) ?>" class="input" value="<?= e($vals[$k]) ?>"></div>
+    <div><label class="label" for="s-<?= e($k) ?>"><?= e($k) ?></label><input id="s-<?= e($k) ?>" name="<?= e($k) ?>" class="input" placeholder="<?= e($k) ?>" value="<?= e($vals[$k]) ?>"></div>
   <?php endforeach; ?>
   </div>
   <div><label class="label" for="robots_rules">Robots rules</label><textarea id="robots_rules" name="robots_rules" class="input" rows="3"><?= e($vals['robots_rules']) ?></textarea></div>
   <div class="grid md:grid-cols-3 gap-3">
-    <div><label class="label" for="site_logo">Logo URL/path</label><input id="site_logo" name="site_logo" class="input" value="<?= e($vals['site_logo']) ?>"></div>
-    <div><label class="label" for="favicon">Favicon path</label><input id="favicon" name="favicon" class="input" value="<?= e($vals['favicon']) ?>"></div>
-    <div><label class="label" for="og_image">Default OG image</label><input id="og_image" name="og_image" class="input" value="<?= e($vals['og_image']) ?>"></div>
+    <div><label class="label" for="site_logo">Logo URL/path</label><input id="site_logo" name="site_logo" class="input" placeholder="/assets/images/logo.png" value="<?= e($vals['site_logo']) ?>"></div>
+    <div><label class="label" for="favicon">Favicon path</label><input id="favicon" name="favicon" class="input" placeholder="/favicon.ico" value="<?= e($vals['favicon']) ?>"></div>
+    <div><label class="label" for="og_image">Default OG image</label><input id="og_image" name="og_image" class="input" placeholder="/assets/images/og.jpg" value="<?= e($vals['og_image']) ?>"></div>
   </div>
   <div><label class="label" for="logo">Upload logo (png/jpg ≤2MB)</label><input id="logo" type="file" name="logo" class="input" accept=".jpg,.jpeg,.png"></div>
   <h3 class="label">Booking / payment / maps</h3>

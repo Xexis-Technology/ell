@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <h1 class="font-display text-4xl text-[#F3D4A6]">Driver Portal</h1>
 <?php if ($error): ?><div class="alert alert-err mt-4"><?= e($error) ?></div><?php endif; ?>
 <form method="post" class="card p-6 mt-6 space-y-4"><?= csrf_field() ?>
-<div><label class="label" for="email">Email</label><input id="email" type="email" name="email" class="input" required></div>
-<div><label class="label" for="password">Password</label><input id="password" type="password" name="password" class="input" required></div>
+<div><label class="label" for="email">Email</label><input id="email" type="email" name="email" class="input" required placeholder="you@example.com"></div>
+<div><label class="label" for="password">Password</label><input id="password" type="password" name="password" class="input" required placeholder="Your password"></div>
 <button class="btn-gold touch-btn">Sign in</button>
 <p class="text-sm"><a class="underline" href="<?= url('driver/register.php') ?>">Register as driver</a> · <a class="underline" href="<?= url('driver/forgot-password.php') ?>">Forgot password?</a></p></form></div></body></html>

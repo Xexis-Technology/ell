@@ -27,7 +27,7 @@ ob_start();
 <form method="post" class="card p-6 mt-4 space-y-4"><?= csrf_field() ?>
   <div><label class="label" for="name">Full name</label><input id="name" name="name" class="input" required value="<?= e($c['name']) ?>"></div>
   <div><label class="label" for="email">Email</label><input id="email" class="input" disabled value="<?= e($c['email']) ?>"></div>
-  <div><label class="label" for="phone">Phone</label><input id="phone" name="phone" class="input" value="<?= e($c['phone'] ?? '') ?>"></div>
+  <div><label class="label" for="phone">Phone</label><input id="phone" name="phone" class="input" placeholder="+1 555 010 2030" value="<?= e($c['phone'] ?? '') ?>"></div>
   <button class="btn-gold">Save</button>
 </form>
 <?php

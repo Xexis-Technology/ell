@@ -196,3 +196,24 @@ function money(float|int|string $v): string
 {
     return number_format((float)$v, 2, '.', ',');
 }
+
+/** Category-mapped stock photo for fleet vehicles. Returns [unsplash_id, alt]. */
+function vehicle_photo(?string $category): array
+{
+    static $map = [
+        'sedan' => ['photo-1555215695-3004980ad54e', 'Black luxury sedan'],
+        'luxury sedan' => ['photo-1492144534655-ae79c964c9d7', 'Luxury sedan'],
+        'suv' => ['photo-1568605117036-5fe5e7bab0b7', 'Premium SUV'],
+        'luxury suv' => ['photo-1502877338535-766e1452684a', 'Luxury SUV at night'],
+        'van' => ['photo-1464219789935-c2d9d9aba644', 'Passenger van on the road'],
+        'limo' => ['photo-1519641471654-76ce0107ad1b', 'Limousine cabin'],
+    ];
+    $key = strtolower(trim((string)$category));
+    return $map[$key] ?? ['photo-1503376780353-7e6692767b70', 'Luxury vehicle'];
+}
+
+function vehicle_photo_url(?string $category, int $w = 800): string
+{
+    [$id] = vehicle_photo($category);
+    return 'https://images.unsplash.com/' . $id . '?auto=format&fit=crop&w=' . $w . '&q=60';
+}

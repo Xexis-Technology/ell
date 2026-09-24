@@ -27,8 +27,8 @@ ob_start();
 <h1 class="font-display text-4xl text-[#F9F9F9]">Password</h1>
 <?php if ($msg): ?><div class="alert <?= $isErr ? 'alert-err' : 'alert-ok' ?> mt-4"><?= e($msg) ?></div><?php endif; ?>
 <form method="post" class="card p-6 mt-4 space-y-4"><?= csrf_field() ?>
-  <div><label class="label" for="current">Current password</label><input id="current" type="password" name="current" class="input" required></div>
-  <div><label class="label" for="new">New password (min 8)</label><input id="new" type="password" name="new" class="input" required></div>
+  <div><label class="label" for="current">Current password</label><input id="current" type="password" name="current" class="input" required placeholder="Your current password"></div>
+  <div><label class="label" for="new">New password (min 8)</label><input id="new" type="password" name="new" class="input" required placeholder="Choose a new password"></div>
   <button class="btn-gold">Update password</button>
 </form>
 <?php

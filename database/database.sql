@@ -537,6 +537,17 @@ CREATE TABLE IF NOT EXISTS notifications (
   KEY idx_ntf_template (template)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------- newsletter_subscribers ----------------
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NOT NULL,
+  status ENUM('active','unsubscribed') NOT NULL DEFAULT 'active',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  unsubscribed_at DATETIME NULL,
+  UNIQUE KEY uq_nl_email (email),
+  KEY idx_nl_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------- group_event_inquiries ----------------
 CREATE TABLE IF NOT EXISTS group_event_inquiries (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

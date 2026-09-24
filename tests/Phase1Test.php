@@ -240,4 +240,17 @@ final class Phase1Test extends TestCase
         $this->assertEquals(15, $c['billable']);
         $this->assertEquals(30.00, $c['charge']); // 2 intervals x $15
     }
+
+    public function testNewsletterSubscribe(): void
+    {
+        $pdo = self::$pdo;
+        $pdo->exec("DELETE FROM newsletter_subscribers WHERE email='nl@example.com'");
+        $pdo->prepare('INSERT INTO newsletter_subscribers (email, status) VALUES (?, "active") ON DUPLICATE KEY UPDATE status = "active", unsubscribed_at = NULL')->execute(['nl@example.com']);
+        $pdo->prepare('INSERT INTO newsletter_subscribers (email, status) VALUES (?, "active") ON DUPLICATE KEY UPDATE status = "active", unsubscribed_at = NULL')->execute(['nl@example.com']);
+        $count = (int)$pdo->query("SELECT COUNT(*) c FROM newsletter_subscribers WHERE email='nl@example.com'")->fetch()['c'];
+        $this->assertEquals(1, $count); // no duplicates
+        $pdo->exec("UPDATE newsletter_subscribers SET status='unsubscribed', unsubscribed_at=NOW() WHERE email='nl@example.com'");
+        $st = $pdo->query("SELECT status FROM newsletter_subscribers WHERE email='nl@example.com'")->fetch();
+        $this->assertEquals('unsubscribed', $st['status']);
+    }
 }

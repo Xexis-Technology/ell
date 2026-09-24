@@ -25,11 +25,11 @@ ob_start();
 <p class="text-sm"><?php foreach ($pages as $p): ?><a class="underline" href="<?= url('admin/cms.php?slug=' . $p['slug']) ?>"><?= e($p['slug']) ?></a> · <?php endforeach; ?></p>
 <?php if ($page): ?>
 <form method="post" class="card p-4 mt-3 space-y-3"><?= csrf_field() ?><input type="hidden" name="slug" value="<?= e($page['slug']) ?>">
-  <div><label class="label" for="title">Title</label><input id="title" name="title" class="input" value="<?= e((string)($page['title'] ?? '')) ?>"></div>
-  <div><label class="label" for="body">Body (HTML allowed)</label><textarea id="body" name="body" class="input" rows="12"><?= e((string)($page['body'] ?? '')) ?></textarea></div>
+  <div><label class="label" for="title">Title</label><input id="title" name="title" class="input" placeholder="Page title" value="<?= e((string)($page['title'] ?? '')) ?>"></div>
+  <div><label class="label" for="body">Body (HTML allowed)</label><textarea id="body" name="body" class="input" rows="12" placeholder="Page content…"><?= e((string)($page['body'] ?? '')) ?></textarea></div>
   <div class="grid md:grid-cols-2 gap-3">
-    <div><label class="label" for="meta_title">Meta title</label><input id="meta_title" name="meta_title" class="input" value="<?= e((string)($page['meta_title'] ?? '')) ?>"></div>
-    <div><label class="label" for="meta_description">Meta description</label><input id="meta_description" name="meta_description" class="input" value="<?= e((string)($page['meta_description'] ?? '')) ?>"></div>
+    <div><label class="label" for="meta_title">Meta title</label><input id="meta_title" name="meta_title" class="input" placeholder="SEO title" value="<?= e((string)($page['meta_title'] ?? '')) ?>"></div>
+    <div><label class="label" for="meta_description">Meta description</label><input id="meta_description" name="meta_description" class="input" placeholder="SEO description" value="<?= e((string)($page['meta_description'] ?? '')) ?>"></div>
   </div>
   <button class="btn-gold">Save</button></form>
 <?php endif; ?>

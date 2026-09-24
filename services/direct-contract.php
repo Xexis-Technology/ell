@@ -25,19 +25,19 @@ ob_start();
   <p class="text-sm text-[#AB8868] mt-1">Corporate accounts and recurring service inquiries.</p>
   <?php if ($message): ?><div class="alert alert-ok mt-4"><?= e($message) ?></div><?php endif; ?>
   <form method="post" class="card p-6 mt-6 space-y-4"><?= csrf_field() ?>
-    <div><label class="label" for="event_type">Contract / service type</label><input id="event_type" name="event_type" class="input" required></div>
+    <div><label class="label" for="event_type">Contract / service type</label><input id="event_type" name="event_type" class="input" required placeholder="Weekly executive shuttle…"></div>
     <div class="grid md:grid-cols-2 gap-4">
-      <div><label class="label" for="event_dates">Dates</label><input id="event_dates" name="event_dates" class="input"></div>
+      <div><label class="label" for="event_dates">Dates</label><input id="event_dates" name="event_dates" class="input" placeholder="Ongoing / specific dates"></div>
       <div><label class="label" for="vehicle_count">Vehicle count</label><input id="vehicle_count" type="number" min="1" name="vehicle_count" class="input"></div>
     </div>
     <div><label class="label" for="estimated_passengers">Estimated passengers</label><input id="estimated_passengers" type="number" min="1" name="estimated_passengers" class="input"></div>
-    <div><label class="label" for="locations">Locations</label><textarea id="locations" name="locations" class="input" rows="2"></textarea></div>
-    <div><label class="label" for="schedule">Schedule</label><textarea id="schedule" name="schedule" class="input" rows="2"></textarea></div>
-    <div><label class="label" for="special_requirements">Special requirements</label><textarea id="special_requirements" name="special_requirements" class="input" rows="2"></textarea></div>
+    <div><label class="label" for="locations">Locations</label><textarea id="locations" name="locations" class="input" rows="2" placeholder="Office, airport, venues"></textarea></div>
+    <div><label class="label" for="schedule">Schedule</label><textarea id="schedule" name="schedule" class="input" rows="2" placeholder="Weekdays 8 AM pickup…"></textarea></div>
+    <div><label class="label" for="special_requirements">Special requirements</label><textarea id="special_requirements" name="special_requirements" class="input" rows="2" placeholder="Billing terms, vehicle preferences…"></textarea></div>
     <div class="grid md:grid-cols-3 gap-4">
-      <div><label class="label" for="contact_name">Contact name</label><input id="contact_name" name="contact_name" class="input" required></div>
-      <div><label class="label" for="contact_email">Contact email</label><input id="contact_email" type="email" name="contact_email" class="input" required></div>
-      <div><label class="label" for="contact_phone">Contact phone</label><input id="contact_phone" name="contact_phone" class="input"></div>
+      <div><label class="label" for="contact_name">Contact name</label><input id="contact_name" name="contact_name" class="input" required placeholder="Jane Smith"></div>
+      <div><label class="label" for="contact_email">Contact email</label><input id="contact_email" type="email" name="contact_email" class="input" required placeholder="you@example.com"></div>
+      <div><label class="label" for="contact_phone">Contact phone</label><input id="contact_phone" name="contact_phone" class="input" placeholder="+1 555 010 2030"></div>
     </div>
     <button class="btn-cta">Submit Inquiry</button>
   </form>

@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924b') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924e') ?>">
 <link rel="stylesheet" href="<?= asset('css/admin.css') ?>">
 <script src="<?= asset('js/admin.js') ?>" defer></script>
 </head>
