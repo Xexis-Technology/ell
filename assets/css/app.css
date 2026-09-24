@@ -1,0 +1,53 @@
+/* Exotic Lane Limo - brand tokens (last.md §32) */
+:root{
+  --black:#0A0A0C; --deep:#0F0F0E; --charcoal:#181819; --input:#212121;
+  --champagne:#F3D4A6; --champagne-lt:#F7E2BF; --gold:#D9B978; --gold-mute:#C8A96B;
+  --tan:#AB8868; --ivory:#F9F9F9; --soft:#F5F5F3; --border:#E5E5E3;
+  --cta:#F9F9F9; --cta-h:#F3D4A6; --err:#A3322F; --err-deep:#8E2B29;
+}
+html{scroll-behavior:smooth}
+body{background:var(--black);color:var(--soft);}
+.font-display{font-family:"Cormorant Garamond",Georgia,serif}
+.font-ui{font-family:Inter,system-ui,sans-serif}
+.btn-gold{background:var(--gold);color:#111;padding:.7rem 1.4rem;font-weight:600;letter-spacing:.02em}
+.btn-gold:hover{background:var(--champagne)}
+.btn-cta{background:var(--cta);color:#0A0A0C;padding:.7rem 1.4rem;font-weight:600;letter-spacing:.02em}
+.btn-cta:hover{background:var(--cta-h)}
+.btn-danger-outline{background:transparent;color:#f3c1bd;border:1px solid var(--err);padding:.7rem 1.4rem;font-weight:600}
+.btn-danger-outline:hover{background:#2a1210}
+.card{background:var(--charcoal);border:1px solid #2a2a2b}
+.input{background:var(--input);border:1px solid #333;color:var(--soft);padding:.65rem .9rem;width:100%}
+.input:focus{outline:2px solid var(--gold-mute);border-color:var(--gold-mute)}
+.label{display:block;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--tan);margin-bottom:.35rem}
+.badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;padding:.2rem .6rem;border:1px solid var(--gold-mute);color:var(--champagne)}
+.table-wrap{overflow-x:auto}
+table.data{width:100%;border-collapse:collapse;font-size:.9rem}
+table.data th{text-align:left;padding:.6rem;color:var(--tan);font-weight:600;text-transform:uppercase;font-size:.72rem;letter-spacing:.06em;border-bottom:1px solid #333}
+table.data td{padding:.65rem;border-bottom:1px solid #262628}
+.alert{padding:.7rem 1rem;margin-bottom:1rem;border:1px solid}
+.alert-ok{background:#0f2417;border-color:#2c6b3f;color:#b9e6c7}
+.alert-err{background:#2a1210;border-color:var(--err);color:#f3c1bd}
+@media (max-width:768px){.no-overflow{overflow-x:hidden}}
+[x-cloak]{display:none !important}
+.no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
+.no-scrollbar::-webkit-scrollbar{display:none}
+/* Homepage editorial system */
+.eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--tan);font-weight:600}
+.display-hero{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clamp(3rem,8vw,5.75rem);line-height:1.02;letter-spacing:-0.01em;color:var(--ivory)}
+.display-hero em{font-style:italic;color:var(--champagne);font-weight:500}
+.hairline-t{border-top:1px solid #262628}
+.hairline-b{border-bottom:1px solid #262628}
+.flight-code{font-size:.7rem;letter-spacing:.18em;color:var(--gold-mute);font-variant-numeric:tabular-nums;font-weight:600}
+.tabular{font-variant-numeric:tabular-nums}
+.marquee{overflow:hidden;white-space:nowrap}
+.marquee-track{display:inline-flex;align-items:center;width:max-content;animation:ell-marquee 48s linear infinite;will-change:transform}
+.marquee-track>span{padding-right:2.75rem}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes ell-marquee{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.marquee-track{animation:none}html{scroll-behavior:auto}}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold-mute);outline-offset:2px}
+.no-focus-ring,.no-focus-ring:focus,.no-focus-ring:focus-visible,.no-focus-ring:active{outline:none !important;box-shadow:none !important;-webkit-tap-highlight-color:transparent}
+/* Hero booking card: no focus/hover boxes on any field (owner request) */
+#heroBooking input,#heroBooking select,#heroBooking textarea{-webkit-tap-highlight-color:transparent}
+#heroBooking input:hover,#heroBooking select:hover,#heroBooking textarea:hover{border-color:#2a2a2b !important}
+#heroBooking input:focus,#heroBooking input:focus-visible,#heroBooking input:active,#heroBooking select:focus,#heroBooking select:focus-visible,#heroBooking select:active,#heroBooking textarea:focus,#heroBooking textarea:focus-visible{outline:none !important;box-shadow:none !important;border-color:#2a2a2b !important}

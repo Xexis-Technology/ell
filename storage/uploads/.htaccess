@@ -1,0 +1,4 @@
+php_flag engine off
+<FilesMatch "\.ph(p[0-9]?|t|tml)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,9 @@
+/* Admin: light operational theme, responsive sidebar/tables */
+:root{--adm-bg:#101012;--adm-panel:#17171a;--adm-gold:#D9B978}
+body.admin{background:var(--adm-bg);color:#eee}
+.admin-shell{display:flex;min-height:100vh}
+.admin-side{width:240px;background:#0c0c0e;border-right:1px solid #262628;padding:1rem;flex-shrink:0}
+.admin-side a{display:block;padding:.55rem .7rem;color:#cfcfcf;border-radius:4px;font-size:.9rem}
+.admin-side a:hover,.admin-side a.active{background:#1d1d20;color:var(--adm-gold)}
+.admin-main{flex:1;padding:1.5rem;min-width:0}
+@media (max-width:900px){.admin-shell{flex-direction:column}.admin-side{width:100%;display:flex;flex-wrap:wrap;gap:.25rem}.admin-side a{flex:1 1 40%}}

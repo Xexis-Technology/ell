@@ -1,0 +1,7 @@
+/* Driver: strongly mobile-optimized, touch-friendly */
+body.driver{background:#0A0A0C;color:#F5F5F3;font-size:16px}
+.ride-card{background:#181819;border:1px solid #2b2b2d;padding:1rem;margin-bottom:1rem}
+.touch-btn{display:block;width:100%;padding:1rem;font-size:1.05rem;font-weight:700;text-align:center;margin-top:.6rem}
+.touch-btn.primary{background:#D9B978;color:#111}
+.touch-btn.ghost{border:1px solid #C8A96B;color:#F3D4A6}
+.status-pill{display:inline-block;padding:.3rem .8rem;border:1px solid #C8A96B;color:#F3D4A6;font-size:.85rem}

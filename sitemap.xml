@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Replace https://exoticlanelimo.com with the production SITE_URL at deploy time. See docs/DEPLOYMENT.md. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://exoticlanelimo.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/point-to-point.php</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/airport.php</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/hourly.php</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/booking.php</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/group-event.php</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://exoticlanelimo.com/services/direct-contract.php</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://exoticlanelimo.com/legal/faq.php</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://exoticlanelimo.com/legal/contact.php</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://exoticlanelimo.com/legal/terms.php</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://exoticlanelimo.com/legal/privacy.php</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>

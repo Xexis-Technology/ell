@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /driver/
+Disallow: /account/
+Disallow: /webhook/
+
+# Replace domain with production SITE_URL at deploy time. See docs/DEPLOYMENT.md.
+Sitemap: https://exoticlanelimo.com/sitemap.xml

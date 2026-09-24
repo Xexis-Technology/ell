@@ -1,0 +1,36 @@
+# Exotic Lane Limo - Ubuntu 24.04 + Nginx + PHP-FPM + MySQL production example
+# Adjust server_name, root, SITE_URL (.env), and php-fpm socket.
+server {
+    listen 443 ssl http2;
+    server_name exoticlanelimo.com www.exoticlanelimo.com;
+    root /var/www/ell;
+    index index.php;
+
+    ssl_certificate /etc/ssl/certs/exoticlanelimo.crt;
+    ssl_certificate_key /etc/ssl/private/exoticlanelimo.key;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Deny sensitive paths
+    location ~ ^/(storage|config|database|app|views|vendor)(/|$) { deny all; return 403; }
+    location = /.env { deny all; return 403; }
+    location ~ ^/storage/uploads/.*\.php$ { deny all; return 403; }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+    access_log /var/log/nginx/ell_access.log;
+    error_log /var/log/nginx/ell_error.log;
+}
+server {
+    listen 80;
+    server_name exoticlanelimo.com www.exoticlanelimo.com;
+    return 301 https://$host$request_uri;
+}

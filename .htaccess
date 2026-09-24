@@ -1,0 +1,24 @@
+# Exotic Lane Limo - Apache (XAMPP local). Production Nginx: see deploy/nginx.conf.example
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Serve existing files/dirs directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+</IfModule>
+
+# Protect sensitive files/dirs
+<FilesMatch "^(\.env|composer\.(json|lock))$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 403 ^/(storage|config|database|app|views)(/|$)
+RedirectMatch 403 ^/(vendor)(/|$)
+
+# Security headers (also set in PHP as fallback)
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Uploads: no PHP execution (see storage/uploads/.htaccess)
