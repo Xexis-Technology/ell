@@ -36,17 +36,27 @@ try {
 } catch (Throwable) { $policy = ''; }
 ob_start();
 ?>
-<div class="max-w-3xl mx-auto px-4 py-12">
-  <h1 class="font-display text-4xl text-[#F9F9F9]">Cancellation</h1>
-  <div class="card p-6 mt-4 text-sm"><?= $policy ?: '<p>Cancellations follow the published policy. Request below.</p>' ?></div>
+<div class="max-w-5xl mx-auto px-4 py-12">
+  <p class="eyebrow">Cancellation</p>
+  <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] mt-2">Cancel a booking</h1>
+  <p class="text-sm text-[#AB8868] mt-2">Have your 8-digit booking number and booking email ready.</p>
   <?php if ($message): ?><div class="alert alert-ok mt-4"><?= e($message) ?></div><?php endif; ?>
-  <form method="post" class="card p-6 mt-4 space-y-4"><?= csrf_field() ?>
-    <div><label class="label" for="booking_number">Booking number</label><input id="booking_number" name="booking_number" class="input" required pattern="[0-9]{8}" placeholder="8-digit number"></div>
-    <div><label class="label" for="email">Booking email</label><input id="email" type="email" name="email" class="input" required placeholder="you@example.com"></div>
-    <button class="btn-cta">Request Cancellation</button>
-  </form>
+  <div class="grid md:grid-cols-2 gap-5 mt-6 items-start">
+    <div class="card rounded-2xl p-6">
+      <h2 class="font-display text-xl text-[#F3D4A6]">Policy</h2>
+      <div class="text-sm mt-2 space-y-2"><?= $policy ?: '<p>Cancellations follow the published policy. Request below.</p>' ?></div>
+      <p class="text-xs text-[#AB8868] mt-4">Paid bookings are refunded per policy. <a class="underline" href="<?= url('legal/terms.php') ?>">Read terms</a> · <a class="underline" href="<?= url('legal/contact.php') ?>">Contact us</a></p>
+    </div>
+    <form method="post" class="card rounded-2xl p-6 space-y-4"><?= csrf_field() ?>
+      <h2 class="font-display text-xl text-[#F3D4A6]">Request</h2>
+      <div><label class="label" for="booking_number">Booking number</label><input id="booking_number" name="booking_number" class="input" required pattern="[0-9]{8}" placeholder="8-digit number"></div>
+      <div><label class="label" for="email">Booking email</label><input id="email" type="email" name="email" class="input" required placeholder="you@example.com"></div>
+      <button class="btn-danger-outline rounded-full w-full py-3 text-sm font-semibold">Request cancellation</button>
+    </form>
+  </div>
 </div>
 <?php
 $content = ob_get_clean();
 $pageTitle = 'Cancellation | Exotic Lane Limo';
+$headerVariant = 'index';
 require APP_ROOT . '/views/layouts/public.php';

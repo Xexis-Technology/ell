@@ -2,12 +2,19 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
 $pdo = Database::pdo();
+$minMile = null;
+$minHourly = null;
+try {
+    $rates = $pdo->query('SELECT MIN(per_mile_rate) AS m, MIN(hourly_rate) AS h FROM pricing_rates WHERE active = 1')->fetch();
+    $minMile = $rates['m'] !== null ? (float)$rates['m'] : null;
+    $minHourly = $rates['h'] !== null ? (float)$rates['h'] : null;
+} catch (Throwable) {}
 $cards = [
-    ['icon' => 'pin', 'name' => 'Point-to-Point', 'desc' => 'Pickup to destination with up to 6 stops, priced per mile and locked before you pay.', 'url' => 'services/point-to-point.php', 'book' => 'services/booking.php?service=point_to_point'],
-    ['icon' => 'plane', 'name' => 'Airport Transportation', 'desc' => 'Airport to address and back, with 60 minutes of free waiting on every pickup.', 'url' => 'services/airport.php', 'book' => 'services/booking.php?service=airport'],
-    ['icon' => 'clock', 'name' => 'Hourly Charter', 'desc' => 'A chauffeur on standby from a 2-hour minimum — add hours, never less.', 'url' => 'services/hourly.php', 'book' => 'services/booking.php?service=hourly'],
-    ['icon' => 'users', 'name' => 'Group & Event', 'desc' => 'Multi-vehicle transportation for weddings and occasions, quoted by our team.', 'url' => 'services/group-event.php', 'book' => 'services/group-event.php'],
-    ['icon' => 'case', 'name' => 'Direct Contract', 'desc' => 'Corporate accounts and recurring routes with direct billing.', 'url' => 'services/direct-contract.php', 'book' => 'services/direct-contract.php'],
+    ['icon' => 'pin', 'name' => 'Point-to-Point', 'desc' => 'Pickup to destination with up to 6 stops, priced per mile and locked before you pay.', 'price' => $minMile !== null ? 'From $' . money($minMile) . '/mi' : null, 'url' => 'services/point-to-point.php', 'book' => 'services/booking.php?service=point_to_point'],
+    ['icon' => 'plane', 'name' => 'Airport Transportation', 'desc' => 'Airport to address and back, with 60 minutes of free waiting on every pickup.', 'price' => $minMile !== null ? 'From $' . money($minMile) . '/mi' : null, 'url' => 'services/airport.php', 'book' => 'services/booking.php?service=airport'],
+    ['icon' => 'clock', 'name' => 'Hourly Charter', 'desc' => 'A chauffeur on standby from a 2-hour minimum — add hours, never less.', 'price' => $minHourly !== null ? 'From $' . money($minHourly) . '/hr' : null, 'url' => 'services/hourly.php', 'book' => 'services/booking.php?service=hourly'],
+    ['icon' => 'users', 'name' => 'Group & Event', 'desc' => 'Multi-vehicle transportation for weddings and occasions, quoted by our team.', 'price' => 'Custom quote', 'url' => 'services/group-event.php', 'book' => 'services/group-event.php', 'single' => true],
+    ['icon' => 'case', 'name' => 'Direct Contract', 'desc' => 'Corporate accounts and recurring routes with direct billing.', 'price' => 'Custom quote', 'url' => 'services/direct-contract.php', 'book' => 'services/direct-contract.php', 'single' => true],
 ];
 ob_start();
 ?>
@@ -78,11 +85,16 @@ ob_start();
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><?= $icons[$card['icon']] ?></svg>
       </span>
       <h3 class="font-display text-2xl text-[#F9F9F9] mt-4"><?= e($card['name']) ?></h3>
+      <?php if (!empty($card['price'])): ?><p class="tabular text-xs font-semibold text-[#F3D4A6] mt-1"><?= e($card['price']) ?></p><?php endif; ?>
       <p class="text-sm text-[#AB8868] mt-2 flex-1"><?= e($card['desc']) ?></p>
+      <?php if (!empty($card['single'])): ?>
+      <a href="<?= url($card['book']) ?>" class="btn-gold rounded-full block text-center text-xs font-semibold px-4 py-2.5 mt-4">Request quote</a>
+      <?php else: ?>
       <div class="grid grid-cols-2 gap-2 mt-4">
         <a href="<?= url($card['book']) ?>" class="btn-gold rounded-full text-center text-xs font-semibold px-4 py-2.5">Book</a>
         <a href="<?= url($card['url']) ?>" class="rounded-full text-center text-xs font-semibold px-4 py-2.5 border border-[#C8A96B] text-[#F3D4A6] hover:bg-[#D9B978]/10">Read more</a>
       </div>
+      <?php endif; ?>
     </article>
     <?php endforeach; ?>
   </div>

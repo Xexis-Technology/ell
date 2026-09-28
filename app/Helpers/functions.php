@@ -19,6 +19,18 @@ function asset(string $path): string
     return url('assets/' . ltrim($path, '/'));
 }
 
+/** Returns an active class when the current script matches one of the given app-relative paths. */
+function nav_active(string|array $paths, bool $underline = true): string
+{
+    $parts = array_values(array_filter(explode('/', (string)($_SERVER['SCRIPT_NAME'] ?? ''))));
+    $c = count($parts);
+    $cur = $c >= 3 ? $parts[$c - 2] . '/' . $parts[$c - 1] : ($parts[$c - 1] ?? '');
+    foreach ((array)$paths as $p) {
+        if ($p === $cur) return $underline ? 'nav-active' : 'text-[#F3D4A6]';
+    }
+    return '';
+}
+
 /** XSS-safe output escaping. */
 function e(mixed $v): string
 {
@@ -216,4 +228,29 @@ function vehicle_photo_url(?string $category, int $w = 800): string
 {
     [$id] = vehicle_photo($category);
     return 'https://images.unsplash.com/' . $id . '?auto=format&fit=crop&w=' . $w . '&q=60';
+}
+
+function slugify(string $s): string
+{
+    $s = strtolower(trim($s));
+    $t = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    if ($t !== false) $s = $t;
+    $s = (string)preg_replace('/[^a-z0-9]+/', '-', $s);
+    $s = trim($s, '-');
+    return $s !== '' ? substr($s, 0, 110) : 'vehicle';
+}
+
+/** Unique vehicle slug (optionally ignoring one id on update). */
+function unique_vehicle_slug(PDO $pdo, string $base, ?int $excludeId = null): string
+{
+    $base = slugify($base) ?: 'vehicle';
+    $slug = $base;
+    $i = 2;
+    while (true) {
+        $sql = 'SELECT 1 FROM vehicles WHERE slug = ?' . ($excludeId ? ' AND id != ' . (int)$excludeId : '') . ' LIMIT 1';
+        $st = $pdo->prepare($sql);
+        $st->execute([$slug]);
+        if (!$st->fetch()) return $slug;
+        $slug = $base . '-' . ($i++);
+    }
 }

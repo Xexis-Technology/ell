@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios@1/dist/axios.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924e') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924g') ?>">
 <script src="<?= asset('js/app.js') ?>" defer></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"LimousineService","name":"Exotic Lane Limo","areaServed":"New York","priceRange":"$$$"}
@@ -75,11 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
 <header id="stickyHeader" class="fixed top-0 inset-x-0 z-50 bg-[#0F0F0E]/95 backdrop-blur border-b border-[#262628]" style="display:none">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <a href="<?= url('index.php') ?>" class="font-display text-xl text-[#F3D4A6]">Exotic Lane Limo</a>
-    <nav class="hidden md:flex items-center gap-6 text-sm" aria-label="Sticky">
-      <a href="<?= url('services/booking.php') ?>" class="hover:text-[#F3D4A6]">Book a Ride</a>
-      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6]">Services</a>
-      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6]">Airport Transfers</a>
-      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6]">Support</a>
+    <nav class="hidden md:flex items-center gap-5 text-sm" aria-label="Sticky">
+      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
+      <a href="<?= url('services/point-to-point.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/point-to-point.php') ?>">Point-to-Point</a>
+      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport</a>
+      <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/hourly.php') ?>">Hourly</a>
+      <a href="<?= url('services/group-event.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/group-event.php') ?>">Groups</a>
+      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Contact</a>
     </nav>
     <?php if (current_user('customer')): ?>
       <a href="<?= url('account/index.php') ?>" class="btn-gold text-sm rounded-full px-5 py-2">My Account</a>
@@ -104,10 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
   <div class="max-w-7xl mx-auto px-4 flex items-center justify-between py-5">
     <a href="<?= url('index.php') ?>" class="font-display text-2xl md:text-3xl tracking-wide text-[#F9F9F9]">Exotic Lane Limo</a>
     <nav class="hidden md:flex items-center gap-7 text-sm text-[#F5F5F3]" aria-label="Primary">
-      <a href="<?= url('services/booking.php') ?>" class="text-[#F3D4A6]">Book a Ride</a>
-      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6]">Services</a>
-      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6]">Airport Transfers</a>
-      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6]">Support</a>
+      <a href="<?= url('services/booking.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/booking.php') ?>">Book a Ride</a>
+      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
+      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport Transfers</a>
+      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['legal/contact.php', 'legal/faq.php']) ?>">Support</a>
     </nav>
     <div class="flex items-center gap-3">
       <?php if (current_user('customer')): ?>
@@ -123,10 +125,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
   </div>
   <div class="md:hidden px-4 pb-4" x-show="menu" x-cloak>
     <nav class="bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 space-y-1 text-[#F5F5F3] text-sm font-medium" aria-label="Mobile">
-      <a href="<?= url('services/booking.php') ?>" class="block px-3 py-2">Book a Ride</a>
-      <a href="<?= url('services/index.php') ?>" class="block px-3 py-2">Services</a>
-      <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2">Airport Transfers</a>
-      <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2">Support</a>
+      <a href="<?= url('services/booking.php') ?>" class="block px-3 py-2 <?= nav_active('services/booking.php', false) ?>">Book a Ride</a>
+      <a href="<?= url('services/index.php') ?>" class="block px-3 py-2 <?= nav_active('services/index.php', false) ?>">Services</a>
+      <a href="<?= url('services/point-to-point.php') ?>" class="block px-3 py-2 <?= nav_active('services/point-to-point.php', false) ?>">Point-to-Point</a>
+      <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport Transfers</a>
+      <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
+      <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+      <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
+      <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active(['legal/contact.php', 'legal/faq.php'], false) ?>">Support</a>
       <a href="<?= url('services/booking.php') ?>" class="btn-gold block text-center rounded-full mt-2">Book Now</a>
     </nav>
   </div>
@@ -139,12 +145,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
       <span class="font-display text-2xl tracking-wide text-[#F3D4A6]">Exotic Lane Limo</span>
     </a>
     <nav class="hidden md:flex items-center gap-6 text-sm" aria-label="Primary">
-      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6]">Services</a>
-      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6]">Airport</a>
-      <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6]">Hourly</a>
-      <a href="<?= url('services/group-event.php') ?>" class="hover:text-[#F3D4A6]">Groups &amp; Events</a>
-      <a href="<?= url('legal/faq.php') ?>" class="hover:text-[#F3D4A6]">FAQ</a>
-      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6]">Contact</a>
+      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['services/index.php', 'services/booking.php', 'services/booking-confirmation.php', 'services/payment.php']) ?>">Services</a>
+      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport</a>
+      <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/hourly.php') ?>">Hourly</a>
+      <a href="<?= url('services/group-event.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/group-event.php') ?>">Groups &amp; Events</a>
+      <a href="<?= url('legal/faq.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/faq.php') ?>">FAQ</a>
+      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Contact</a>
     </nav>
     <div class="flex items-center gap-2">
       <?php if (current_user('customer')): ?>
@@ -160,12 +166,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
   </div>
   <div class="md:hidden px-4 pb-4" x-show="menu" x-cloak>
     <nav class="bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 space-y-1 text-[#F5F5F3] text-sm font-medium" aria-label="Mobile">
-      <a href="<?= url('services/index.php') ?>" class="block px-3 py-2">Services</a>
-      <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2">Airport</a>
-      <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2">Hourly</a>
-      <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2">Groups &amp; Events</a>
-      <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2">FAQ</a>
-      <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2">Contact</a>
+      <a href="<?= url('services/index.php') ?>" class="block px-3 py-2 <?= nav_active(['services/index.php', 'services/booking.php', 'services/booking-confirmation.php', 'services/payment.php'], false) ?>">Services</a>
+      <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport</a>
+      <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
+      <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+      <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
+      <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active('legal/contact.php', false) ?>">Contact</a>
       <?php if (current_user('customer')): ?>
         <a href="<?= url('account/index.php') ?>" class="btn-gold block text-center rounded-full mt-2">My Account</a>
       <?php else: ?>

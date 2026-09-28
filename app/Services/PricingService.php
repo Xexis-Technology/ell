@@ -73,12 +73,19 @@ final class PricingService
             $lines[] = ['charge_type' => 'base_hourly', 'description' => sprintf('Hourly: %.2f hr @ $%s/hr', $h, money($rate)), 'quantity' => $h, 'unit_price' => $rate, 'total' => $base, 'source' => 'pricing_engine'];
         }
 
-        // Add-ons (fixed catalogue)
-        $addonPrices = ['meet_greet' => 25.00, 'child_seat' => 15.00, 'booster_seat' => 10.00];
+        // Add-ons (admin-configured catalogue with hard fallbacks; quantities supported)
+        $addonPrices = [
+            'meet_greet' => (float)(self::chargeAmount($pdo, 'meet_greet') ?? 25.00),
+            'child_seat' => (float)(self::chargeAmount($pdo, 'child_seat') ?? 15.00),
+            'booster_seat' => (float)(self::chargeAmount($pdo, 'booster_seat') ?? 10.00),
+        ];
+        $addonNames = ['meet_greet' => 'Meet & Greet', 'child_seat' => 'Child Seat', 'booster_seat' => 'Booster Seat'];
         foreach (['meet_greet','child_seat','booster_seat'] as $addon) {
-            if (!empty($input['addons'][$addon])) {
+            $sel = $input['addons'][$addon] ?? false;
+            $qty = is_array($sel) ? max(1, min(8, (int)($sel['qty'] ?? 1))) : (!empty($sel) ? 1 : 0);
+            if ($qty > 0) {
                 $amt = $addonPrices[$addon];
-                $lines[] = ['charge_type' => $addon, 'description' => ucwords(str_replace('_',' ', $addon)), 'quantity' => 1, 'unit_price' => $amt, 'total' => $amt, 'source' => 'pricing_engine'];
+                $lines[] = ['charge_type' => $addon, 'description' => $addonNames[$addon] . ($qty > 1 ? ' × ' . $qty : ''), 'quantity' => $qty, 'unit_price' => $amt, 'total' => round($amt * $qty, 2), 'source' => 'pricing_engine'];
             }
         }
 

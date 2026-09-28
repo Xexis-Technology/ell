@@ -20,6 +20,9 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 ## 2026-09-24 — How-it-works reference layout (owner request, layout only)
 - Rebuilt as centered header + photo with floating Fixed-pricing pill and sample trip-slip card + vertical icon steps (gold first icon, connecting line). Our 4 steps, copy, dark champagne system. Verified live + tests green. Status: Completed.
 
+## 2026-09-24 — Active-page nav underline (owner request)
+- New nav_active() helper + gold .nav-active underline; wired into all desktop navs (both variants, sticky bars) and mobile menus (color); section mapping (Support covers FAQ, Services covers booking flow). Verified per-page counts + tests green. Status: Completed.
+
 ## 2026-09-24 — Auth pages index-style header (owner request)
 - Public layout gained an index header variant (same links, pill, hamburger, sticky bar); all 4 auth pages use it. Other pages keep the default header. Verified live + tests green. Status: Completed.
 
@@ -32,14 +35,74 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 ## 2026-09-24 — Shared public header/footer partials (owner request)
 - New views/public_includes/header.php + footer.php in index-page style (wordmark, links, auth-aware CTAs, mobile hamburger menu — previously missing on inner pages); public layout now includes them so every public page shares one header/footer. Verified on 4 pages + home + tests green. Status: Completed.
 
+## 2026-09-24 — Full live trip summary (owner request)
+- Sidebar now mirrors service context, route + stops, schedule, party, vehicle, add-ons with quantities and coupon in real time; proven via screenshot with prefilled values + tests green. Status: Completed.
+
+## 2026-09-24 — Add-on cards v2: custom checkboxes + steppers (owner request)
+- Gold check boxes (highlight card when checked), price pills, −/+ steppers 1–8 replacing typed numbers; live POST verified (3 boosters × $10 = $30); headless clean + tests green. Status: Completed.
+
+## 2026-09-24 — Add-ons redesign with quantities (owner request)
+- Cards with descriptions + per-unit prices; child/booster "How many?" (1–8); pricing engine multiplies quantities from admin-configured rates; live POST verified (2 seats × $15 = $30) + tests green. Status: Completed.
+
+## 2026-09-24 — Vehicle rows with photo, rates + Read more (owner request)
+- Picker rows rebuilt: left photo, name, both rates, Read more → detail page (navigates without selecting); selected row gold-bordered; keyboard operable. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Vehicle popup + refresh persistence (owner request)
+- Step 4 vehicle select replaced with photo-card picker popup (shared helper, rates shown); wizard step saved to sessionStorage per URL and restored on refresh (proven in Node incl. URL-mismatch reset); headless-Chrome clean + tests green. Status: Completed.
+
+## 2026-09-24 — Field-aware resume incl. luggage (owner request)
+- Index widget gained luggage; booking prefill reads it; resume lands on first stage with missing input (full→4, no-luggage→3, empty→1, airport-no-direction→1). All 4 proven in headless DOM + tests green. Status: Completed.
+
+## 2026-09-24 — Wizard resumes from widget prefill (owner request)
+- Booking wizard auto-advances to first incomplete stage on prefilled arrival (route/schedule done → lands on vehicle step); empty loads still start at step 1. Proven in headless DOM both ways + tests green. Status: Completed.
+
+## 2026-09-24 — Full-chain verification: widget → booking → payment (owner request)
+- Confirmed all 10 widget params prefill booking; round-trip POST creates booking 55777470 with stop; confirmation + payment pages 200. Flow stands as designed. Status: Completed.
+
+## 2026-09-24 — Real-time duplicate-location block (owner request)
+- Selection is now refused instantly with an inline error inside the popup (both pages), not just on submit; logic unit-proven in Node; headless-Chrome clean + tests green. Status: Completed.
+
+## 2026-09-24 — Same-location blocked (owner request)
+- Pickup/destination identical rejected on index widget (inline message), booking wizard (jumps to step 2 with message) and server-side (BookingService, hourly exempt). Live POST proven blocked + tests green. Status: Completed.
+
+## 2026-09-24 — Per-service route rules on booking (owner request)
+- Step 2 mirrors the index widget: hourly hides destination (auto-filled from pickup on submit), stops only on one-way point-to-point (cleared otherwise); headless-Chrome clean; hourly POST verified + tests green. Status: Completed.
+
+## 2026-09-24 — Step-1 clickable boxes (owner request)
+- Service/trip/direction dropdowns replaced with clickable box + pill groups (p2p shows One/Round, airport shows directions, hourly shows stepper); hidden inputs carry values; airport direction validated per-step; headless-Chrome clean; airport POST verified + tests green. Status: Completed.
+
+## 2026-09-24 — Blank-form fix: HTML-escape JSON in x-data (critical)
+- Root cause (proven via headless Chrome console): raw json_encode quote chars terminated the x-data attribute early, killing the whole Alpine component so every stage hid. Fixed with e(json_encode()) on pickup/dest; audited all other attribute contexts clean. Verified zero console errors + screenshot of working wizard + tests green. Status: Completed.
+
+## 2026-09-24 — Booking step wizard (owner request)
+- One stage at a time with top horizontal tracker (scrollable mobile), per-stage validation + revisit, trip selector only on point-to-point, YOUR TRIP sidebar kept; graceful no-Alpine fallback; POST E2E verified + tests green. Status: Completed.
+
+## 2026-09-24 — Booking page index-style pickers (owner request)
+- Pickup/destination/stops open the location popup (search, Road/Airport chips, custom entry); date uses calendar popup, time uses spinner popup; shared bookingPage() factory in assets/js/booking.js; submit blocked until date+time chosen. POST E2E verified (93901889 with stop) + tests green. Status: Completed.
+
+## 2026-09-24 — Booking page staged redesign (frontend-design)
+- Form restructured into numbered journey stages (01 service → 05 contact) + sticky live trip summary sidebar; all field names/logic identical, index header; POST E2E verified (booking 66207486) + tests green. Status: Completed.
+
+## 2026-09-24 — Services page upgrade: live prices + comparison table (frontend-design)
+- Cards show live from-prices (DB rates) or Custom quote; new "Which ride fits?" comparison table (waiting, stops, minimum, starting price — all real policy/rate data). Verified live + tests green. Status: Completed.
+
 ## 2026-09-24 — Services trim + two-button cards (owner request)
 - Removed category strip, stats and fleet showcase (plus dead queries); header CTA is now Book now; service cards carry gold Book + outlined Read more buttons. Verified + tests green. Status: Completed.
+
+## 2026-09-24 — Service detail pages reference-layout rebuild (owner request, layout only)
+- point-to-point, airport, hourly rebuilt: spec-column hero panel, giant mixed-type headline, gold CTA, floating fact card, editorial + photo pair + outline watermark, fact strip; index header on all three. Verified live + tests green. Status: Completed.
 
 ## 2026-09-24 — Services page reference-layout rebuild (owner request, layout only)
 - Rebuilt as hero panel + category marquee + about w/ floating card + real DB stats + 5 service cards (icon, Read more, Book) + why-us accordion + fleet showcase. All data real, our theme/copy. Verified live + tests green. Status: Completed.
 
 ## 2026-09-24 — Services index redesign + index header (owner request, frontend-design)
 - Rebuilt as route-board rows (SVC·01–05 incl. Direct Contract, fact chips, per-service CTAs) + index header variant. Verified live + tests green. Status: Completed.
+
+## 2026-09-24 — Group/direct inquiry pages reference-layout rebuild (owner request, layout only)
+- Split photo-process panels + organized forms, index headers, handlers untouched; group submit verified over HTTP + tests green. Status: Completed.
+
+## 2026-09-24 — Confirmation/cancellation/fleet/payment redesign (frontend-design)
+- Confirmation: centered hero (check disc, big number, status pills), detail grid, next-steps cards. Cancellation: policy + form split, danger CTA. Fleet: eyebrow + rate badge overlay. Payment: order-summary + card panels. Index header on all four; logic untouched; all 200 + tests green. Status: Completed.
 
 ## 2026-09-24 — Contact reference-layout rebuild (owner request, layout only)
 - Rounded panel (headline + org info + Book CTA / form with name, phone, email, message), reassurance strip, 4 fact columns; index header; submit flow verified over HTTP + tests green. Status: Completed.
@@ -49,6 +112,9 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 
 ## 2026-09-24 — Footer redesign + working newsletter (owner request, layout only)
 - New footer: centered newsletter block (validated subscribe, PRG, duplicate-safe) + dark rounded panel (brand, org contact/socials from settings, 3 link columns, car photo). New newsletter_subscribers table (schema + live). Admin notifications page manages subscribers (unsubscribe). E2E verified (subscribe, message, dupe) + new test. Suite 13/45 green. Status: Completed.
+
+## 2026-09-24 — Fleet listing + slug URLs (owner request)
+- services/fleet.php lists all cars (Book/View each); detail resolves slug (cadillac-escalade) with legacy numeric fallback + 404; slugs auto-generated (unique) in admin + backfilled; homepage/picker link slugs; sitemap entry. Verified listing/slug/legacy/404 + tests green. Status: Completed.
 
 ## 2026-09-24 — Fleet Book/View buttons + detail page (owner request)
 - Cards now carry gold Book (→ booking) + outlined View (→ services/fleet.php?vehicle=N); new detail page with photo, year/seats/luggage/rates, Book + group-inquiry CTAs, sibling vehicles, per-vehicle SEO, 404 handling; shared vehicle_photo() helper. Verified 200/404 + tests green. Status: Completed.

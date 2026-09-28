@@ -20,6 +20,9 @@ final class BookingService
         if (!in_array($input['trip_type'] ?? 'one_way', ['one_way','round_trip'], true)) {
             $errors['trip_type'] = 'Invalid trip type.';
         }
+        if (($input['service_type'] ?? '') !== 'hourly' && trim((string)($input['pickup_location'] ?? '')) !== '' && mb_strtolower(trim((string)($input['pickup_location'] ?? ''))) === mb_strtolower(trim((string)($input['destination_location'] ?? '')))) {
+            $errors['destination_location'] = 'Pickup and destination cannot be the same location.';
+        }
         // Date/time + lead time
         if (!isset($errors['pickup_date']) && !isset($errors['pickup_time'])) {
             $dt = strtotime(($input['pickup_date'] ?? '') . ' ' . ($input['pickup_time'] ?? ''));

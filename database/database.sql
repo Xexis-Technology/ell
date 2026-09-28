@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   category_id BIGINT UNSIGNED NULL,
   make VARCHAR(80) NOT NULL,
   model VARCHAR(80) NOT NULL,
+  slug VARCHAR(120) NULL,
   year SMALLINT NULL,
   plate VARCHAR(30) NULL,
   passenger_capacity INT NOT NULL DEFAULT 3,
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_veh_cat FOREIGN KEY (category_id) REFERENCES vehicle_categories(id) ON DELETE SET NULL,
+  UNIQUE KEY uq_veh_slug (slug),
   KEY idx_veh_status (status),
   KEY idx_veh_cat (category_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

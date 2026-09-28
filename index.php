@@ -33,12 +33,13 @@ ob_start();
 </script>
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <a href="<?= url('index.php') ?>" class="font-display text-xl text-[#F3D4A6]">Exotic Lane Limo</a>
-    <nav class="hidden md:flex items-center gap-6 text-sm" aria-label="Sticky">
-      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6]">Services</a>
-      <a href="#fleet" class="hover:text-[#F3D4A6]">Fleet</a>
-      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6]">Airport</a>
-      <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6]">Hourly</a>
-      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6]">Contact</a>
+    <nav class="hidden md:flex items-center gap-5 text-sm" aria-label="Sticky">
+      <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
+      <a href="<?= url('services/point-to-point.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/point-to-point.php') ?>">Point-to-Point</a>
+      <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport</a>
+      <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/hourly.php') ?>">Hourly</a>
+      <a href="<?= url('services/group-event.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/group-event.php') ?>">Groups</a>
+      <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Contact</a>
     </nav>
     <?php if (current_user('customer')): ?>
       <a href="<?= url('account/index.php') ?>" class="btn-gold text-sm rounded-full px-5 py-2">My Account</a>
@@ -55,10 +56,10 @@ ob_start();
     <header class="flex items-center justify-between py-5">
       <a href="<?= url('index.php') ?>" class="font-display text-2xl md:text-3xl tracking-wide text-[#F9F9F9]">Exotic Lane Limo</a>
       <nav class="hidden md:flex items-center gap-7 text-sm text-[#F5F5F3]" aria-label="Primary">
-        <a href="<?= url('services/booking.php') ?>" class="text-[#F3D4A6]">Book a Ride</a>
-        <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6]">Services</a>
-        <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6]">Airport Transfers</a>
-        <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6]">Support</a>
+        <a href="<?= url('services/booking.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/booking.php') ?>">Book a Ride</a>
+        <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
+        <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport Transfers</a>
+        <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Support</a>
       </nav>
       <div class="flex items-center gap-3">
         <?php if (current_user('customer')): ?>
@@ -75,10 +76,14 @@ ob_start();
     <!-- Mobile menu -->
     <div class="md:hidden" x-show="menu" x-cloak>
       <nav class="bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 mb-4 space-y-1 text-[#F5F5F3] text-sm font-medium" aria-label="Mobile">
-        <a href="<?= url('services/booking.php') ?>" class="block px-3 py-2">Book a Ride</a>
-        <a href="<?= url('services/index.php') ?>" class="block px-3 py-2">Services</a>
-        <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2">Airport Transfers</a>
-        <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2">Support</a>
+        <a href="<?= url('services/booking.php') ?>" class="block px-3 py-2 <?= nav_active('services/booking.php', false) ?>">Book a Ride</a>
+        <a href="<?= url('services/index.php') ?>" class="block px-3 py-2 <?= nav_active('services/index.php', false) ?>">Services</a>
+        <a href="<?= url('services/point-to-point.php') ?>" class="block px-3 py-2 <?= nav_active('services/point-to-point.php', false) ?>">Point-to-Point</a>
+        <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport Transfers</a>
+        <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
+        <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+        <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
+        <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active(['legal/contact.php', 'legal/faq.php'], false) ?>">Support</a>
         <a href="<?= url('services/booking.php') ?>" class="btn-gold block text-center rounded-full mt-2">Book Now</a>
       </nav>
     </div>
@@ -181,8 +186,8 @@ ob_start();
               </span>
             </div>
 
-            <!-- Date / time / passengers (passengers full-width on mobile) -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <!-- Date / time / passengers / luggage -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div class="bg-[#0A0A0C] border border-[#2a2a2b] rounded-xl px-3 py-2 cursor-pointer" @click="openDate()">
                 <label class="block text-[10px] tracking-widest text-[#AB8868] whitespace-nowrap" for="w-date">Pick-up date</label>
                 <input id="w-date" :value="fmtDate()" readonly placeholder="Select date" aria-label="Pick-up date, tap to choose"
@@ -195,15 +200,20 @@ ob_start();
                   class="no-focus-ring w-full bg-transparent text-sm text-white placeholder-[#6b6b6b] focus:outline-none cursor-pointer">
                 <input type="hidden" name="time" :value="timeVal">
               </div>
-              <div class="col-span-2 sm:col-span-1 bg-[#0A0A0C] border border-[#2a2a2b] rounded-xl px-3 py-2">
+              <div class="bg-[#0A0A0C] border border-[#2a2a2b] rounded-xl px-3 py-2">
                 <label class="block text-[10px] tracking-widest text-[#AB8868] whitespace-nowrap" for="w-pax">Passengers</label>
                 <input id="w-pax" name="passengers" type="number" min="1" max="20" value="1" class="w-full bg-transparent text-sm text-white focus:outline-none">
               </div>
+              <div class="bg-[#0A0A0C] border border-[#2a2a2b] rounded-xl px-3 py-2">
+                <label class="block text-[10px] tracking-widest text-[#AB8868] whitespace-nowrap" for="w-bags">Luggage</label>
+                <input id="w-bags" name="luggage" type="number" min="0" max="20" value="0" class="w-full bg-transparent text-sm text-white focus:outline-none">
+              </div>
             </div>
             <p x-show="dateTimeErr" x-cloak class="text-xs text-[#f3c1bd]">Please choose a pick-up date and time.</p>
+            <p x-show="routeErr" x-cloak class="text-xs text-[#f3c1bd]" x-text="routeErr" role="alert"></p>
 
             <button type="submit" class="btn-gold rounded-full w-full py-3.5 text-sm font-semibold inline-flex items-center justify-center gap-3">
-              Get a Quote
+              Book your ride
               <span class="w-6 h-6 rounded-full bg-[#0A0A0C] text-[#D9B978] inline-flex items-center justify-center" aria-hidden="true">↗</span>
             </button>
           </form>
@@ -224,6 +234,7 @@ ob_start();
               <button type="button" @click="locType = locType === 'airport' ? '' : 'airport'" :class="locType === 'airport' ? 'bg-[#D9B978] text-[#0A0A0C]' : 'border border-[#3a3a3d] text-[#F5F5F3]'" class="text-xs font-semibold px-4 py-2 rounded-full">Airport</button>
             </div>
             <button type="button" x-show="locQuery.trim() !== ''" @click="useSearchAsCustom()" class="w-full mt-2 border border-dashed border-[#C8A96B] rounded-xl py-2.5 text-xs text-[#F3D4A6]">Use “<span x-text="locQuery.trim()"></span>” as address</button>
+            <p x-show="routeErr" class="text-xs text-[#f3c1bd] px-1 mt-2" x-text="routeErr" role="alert"></p>
             <div class="overflow-y-auto no-scrollbar mt-2 -mx-1 px-1">
               <template x-for="l in filteredLocs()" :key="l.v">
                 <button type="button" @click="pickLoc(l.v)" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-[#212121] flex items-center gap-3">
@@ -329,9 +340,20 @@ function tripSlip() {
     calY: null,
     calM: null,
     dateTimeErr: false,
+    routeErr: '',
     heroSubmit(e) {
       if (this.tab === 'hourly' && this.sameDrop && this.$refs.pickup && this.$refs.destination) {
         this.$refs.destination.value = this.$refs.pickup.value;
+      }
+      this.routeErr = '';
+      if (this.tab !== 'hourly' || !this.sameDrop) {
+        const p = ((this.$refs.pickup && this.$refs.pickup.value) || '').trim().toLowerCase();
+        const d = ((this.$refs.destination && this.$refs.destination.value) || '').trim().toLowerCase();
+        if (p && d && p === d) {
+          this.routeErr = 'Pickup and destination cannot be the same location.';
+          e.preventDefault();
+          return;
+        }
       }
       if (!this.dateVal || !this.timeVal) {
         this.dateTimeErr = true;
@@ -453,6 +475,7 @@ function tripSlip() {
       this.stopIdx = i;
       this.locQuery = '';
       this.locType = '';
+      this.routeErr = '';
       this.locOpen = true;
       this.$nextTick(() => { if (this.$refs.locSearch) this.$refs.locSearch.focus(); });
     },
@@ -463,9 +486,21 @@ function tripSlip() {
         this.$refs[this.locFor].value = v;
       }
     },
+    sameAsOther(v) {
+      if (this.locFor !== 'pickup' && this.locFor !== 'destination') return false;
+      const other = this.locFor === 'pickup' ? this.$refs.destination : this.$refs.pickup;
+      const norm = s => (s || '').trim().toLowerCase();
+      const nv = norm(v);
+      return nv !== '' && other && norm(other.value) === nv;
+    },
     useSearchAsCustom() {
       const v = (this.locQuery || '').trim();
       if (!v) return;
+      if (this.sameAsOther(v)) {
+        this.routeErr = 'Pickup and destination cannot be the same location.';
+        return;
+      }
+      this.routeErr = '';
       this.setLocValue(v);
       this.locOpen = false;
     },
@@ -474,6 +509,11 @@ function tripSlip() {
       return this.locs.filter(l => (!this.locType || l.t === this.locType) && (!q || (l.v + ' ' + l.a).toLowerCase().includes(q)));
     },
     pickLoc(v) {
+      if (this.sameAsOther(v)) {
+        this.routeErr = 'Pickup and destination cannot be the same location.';
+        return;
+      }
+      this.routeErr = '';
       this.setLocValue(v);
       this.locOpen = false;
     },
@@ -666,7 +706,7 @@ function tripSlip() {
         </p>
         <div class="grid grid-cols-2 gap-2 mt-4">
           <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full text-center text-xs font-semibold px-4 py-2.5">Book</a>
-          <a href="<?= url('services/fleet.php?vehicle=' . (int)$v['id']) ?>" class="rounded-full text-center text-xs font-semibold px-4 py-2.5 border border-[#C8A96B] text-[#F3D4A6] hover:bg-[#D9B978]/10">View</a>
+          <a href="<?= url('services/fleet.php?vehicle=' . urlencode($v['slug'] ?: ('vehicle-' . (int)$v['id']))) ?>" class="rounded-full text-center text-xs font-semibold px-4 py-2.5 border border-[#C8A96B] text-[#F3D4A6] hover:bg-[#D9B978]/10">View</a>
         </div>
       </div>
     </article>

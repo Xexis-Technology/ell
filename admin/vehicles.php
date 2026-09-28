@@ -13,11 +13,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fields = ['category_id' => $_POST['category_id'] ?: null, 'make' => trim($_POST['make'] ?? ''), 'model' => trim($_POST['model'] ?? ''), 'year' => (int)($_POST['year'] ?? 0) ?: null, 'plate' => trim($_POST['plate'] ?? ''), 'passenger_capacity' => (int)($_POST['passenger_capacity'] ?? 3), 'luggage_capacity' => (int)($_POST['luggage_capacity'] ?? 2), 'status' => in_array($_POST['status'] ?? '', ['active','inactive','maintenance'], true) ? $_POST['status'] : 'active'];
         if ($fields['make'] === '' || $fields['model'] === '') $msg = 'Make/model required.';
         elseif ($id) {
-            $pdo->prepare('UPDATE vehicles SET category_id=?, make=?, model=?, year=?, plate=?, passenger_capacity=?, luggage_capacity=?, status=? WHERE id=?')->execute([...array_values($fields), $id]);
+            $cur = $pdo->query('SELECT slug, make, model FROM vehicles WHERE id = ' . $id)->fetch();
+            $slug = $cur && $cur['slug'] ? $cur['slug'] : unique_vehicle_slug($pdo, $fields['make'] . ' ' . $fields['model'], $id);
+            $pdo->prepare('UPDATE vehicles SET category_id=?, make=?, model=?, slug=?, year=?, plate=?, passenger_capacity=?, luggage_capacity=?, status=? WHERE id=?')->execute([$fields['category_id'], $fields['make'], $fields['model'], $slug, $fields['year'], $fields['plate'], $fields['passenger_capacity'], $fields['luggage_capacity'], $fields['status'], $id]);
             audit($pdo, 'admin', (int)$admin['id'], 'vehicle.updated', 'vehicle', $id, null);
             $msg = 'Vehicle updated.';
         } else {
-            $pdo->prepare('INSERT INTO vehicles (category_id, make, model, year, plate, passenger_capacity, luggage_capacity, status) VALUES (?,?,?,?,?,?,?,?)')->execute(array_values($fields));
+            $slug = unique_vehicle_slug($pdo, $fields['make'] . ' ' . $fields['model']);
+            $pdo->prepare('INSERT INTO vehicles (category_id, make, model, slug, year, plate, passenger_capacity, luggage_capacity, status) VALUES (?,?,?,?,?,?,?,?,?)')->execute([$fields['category_id'], $fields['make'], $fields['model'], $slug, $fields['year'], $fields['plate'], $fields['passenger_capacity'], $fields['luggage_capacity'], $fields['status']]);
             $nid = (int)$pdo->lastInsertId();
             $pdo->prepare('INSERT INTO pricing_rates (vehicle_id, per_mile_rate, hourly_rate, active) VALUES (?,?,?,1)')->execute([$nid, (float)($_POST['per_mile_rate'] ?? 0), (float)($_POST['hourly_rate'] ?? 0)]);
             audit($pdo, 'admin', (int)$admin['id'], 'vehicle.created', 'vehicle', $nid, null);

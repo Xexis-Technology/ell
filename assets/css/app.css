@@ -26,13 +26,15 @@ body{background:var(--black);color:var(--soft);}
 table.data{width:100%;border-collapse:collapse;font-size:.9rem}
 table.data th{text-align:left;padding:.6rem;color:var(--tan);font-weight:600;text-transform:uppercase;font-size:.72rem;letter-spacing:.06em;border-bottom:1px solid #333}
 table.data td{padding:.65rem;border-bottom:1px solid #262628}
-.alert{padding:.7rem 1rem;margin-bottom:1rem;border:1px solid}
+.alert{padding:.7rem 1rem;margin-bottom:1rem;border:1px solid;border-radius:12px}
 .alert-ok{background:#0f2417;border-color:#2c6b3f;color:#b9e6c7}
 .alert-err{background:#2a1210;border-color:var(--err);color:#f3c1bd}
 @media (max-width:768px){.no-overflow{overflow-x:hidden}}
 [x-cloak]{display:none !important}
 .no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
 .no-scrollbar::-webkit-scrollbar{display:none}
+.nav-active{color:var(--champagne) !important;position:relative}
+.nav-active::after{content:'';position:absolute;left:0;right:0;bottom:-6px;height:2px;background:var(--gold);border-radius:2px}
 /* Homepage editorial system */
 .eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--tan);font-weight:600}
 .display-hero{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clamp(3rem,8vw,5.75rem);line-height:1.02;letter-spacing:-0.01em;color:var(--ivory)}
