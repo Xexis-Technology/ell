@@ -539,6 +539,30 @@ CREATE TABLE IF NOT EXISTS notifications (
   KEY idx_ntf_template (template)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------- blog_posts ----------------
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(150) NOT NULL,
+  title VARCHAR(190) NOT NULL,
+  excerpt VARCHAR(255) NULL,
+  body MEDIUMTEXT NULL,
+  cover VARCHAR(255) NULL,
+  meta_title VARCHAR(190) NULL,
+  meta_description VARCHAR(255) NULL,
+  status ENUM('draft','published') NOT NULL DEFAULT 'draft',
+  published_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_blog_slug (slug),
+  KEY idx_blog_status (status, published_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO blog_posts (slug, title, excerpt, body, cover, meta_title, meta_description, status, published_at) VALUES
+('airport-pickup-guide','The Complete Guide to Airport Pickups in New York','How airport transfers work, what free waiting covers, and why you never need a flight number.','<p>Airport days go wrong in predictable ways. A chauffeured airport transfer removes all three problems at once: pickup window, waiting and curb chaos.</p><h2>How it works</h2><p>Tell us the airport and your address, pick a direction, and choose a date and time. Your chauffeur waits up to 60 minutes free.</p><h2>No flight number needed</h2><p>Our airport service is address-based — the booking holds your window regardless.</p>','photo-1436491865332-7a61a109cc05','Airport Pickup Guide | Exotic Lane Limo','How chauffeured airport transfers work.','published', NOW()),
+('hourly-charter-guide','When an Hourly Charter Beats Point-to-Point','Nights out, weddings and roadshows: the math and the freedom of hiring by the hour.','<p>If your evening has more than two stops, point-to-point pricing stops making sense. That is when an hourly charter wins.</p><h2>The 2-hour minimum</h2><p>Every hourly booking starts at two hours; add more in half-hour steps.</p>','photo-1496442226666-8d4d0e62e6e9','Hourly Charter Guide | Exotic Lane Limo','When to hire a chauffeur by the hour.','published', NOW()),
+('group-event-transport','Moving a Group Without the Chaos','Weddings, corporate outings and big nights: how multi-vehicle transport works.','<p>Moving forty people in separate cars is how timelines die. Group transportation puts every leg on one plan.</p><h2>How it works</h2><p>Send headcount, dates, locations and schedule — we respond with vehicles and a single quoted total.</p>','photo-1464219789935-c2d9d9aba644','Group Event Transport | Exotic Lane Limo','How multi-vehicle group transportation works.','published', NOW())
+ON DUPLICATE KEY UPDATE title=VALUES(title);
+
 -- ---------------- newsletter_subscribers ----------------
 CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

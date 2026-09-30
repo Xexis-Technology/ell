@@ -59,6 +59,7 @@ ob_start();
         <a href="<?= url('services/booking.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/booking.php') ?>">Book a Ride</a>
         <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
         <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport Transfers</a>
+        <a href="<?= url('services/blogs/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php']) ?>">Blog</a>
         <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Support</a>
       </nav>
       <div class="flex items-center gap-3">
@@ -82,6 +83,7 @@ ob_start();
         <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport Transfers</a>
         <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
         <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+        <a href="<?= url('services/blogs/index.php') ?>" class="block px-3 py-2 <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php'], false) ?>">Blog</a>
         <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
         <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active(['legal/contact.php', 'legal/faq.php'], false) ?>">Support</a>
         <a href="<?= url('services/booking.php') ?>" class="btn-gold block text-center rounded-full mt-2">Book Now</a>

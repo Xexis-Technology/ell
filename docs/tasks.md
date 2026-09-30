@@ -110,6 +110,15 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 ## 2026-09-24 — FAQ reference-layout rebuild (owner request, layout only)
 - Centered header + contact line, 4 category pills filtering 14 real Q&As (booking, pricing & payment, rides, account) with icon squares and expandable rows, CMS body preserved below. Verified live + tests green. Status: Completed.
 
+## 2026-09-24 — Blog nav links + deep-path active states (owner request)
+- Blog link in hero navs, both mobile menus and default header; nav_active() upgraded to suffix matching so 3-level paths (blogs) highlight incl. reader page. Verified + tests green. Status: Completed.
+
+## 2026-09-24 — Blog layout upgrades (owner request)
+- Listing Read-full-story is now a gold button; reader is two-column on PC (article + sticky More-blogs sidebar, stacked mobile); all blog card backgrounds removed site-wide. Verified live. Status: Completed.
+
+## 2026-09-24 — Blog system with slug URLs (owner request)
+- services/blogs/index.php (all published) + read.php?slug= (SEO meta, related, 404); blog_posts table + 3 seeds (schema + live); admin/blog.php CRUD with auto-slug + nav link; footer/sitemap links. Fixed empty-slug fallback bug found live. E2E verified (list/read/404/admin create+delete) + new test. Suite 14/48 green. Status: Completed.
+
 ## 2026-09-24 — Footer redesign + working newsletter (owner request, layout only)
 - New footer: centered newsletter block (validated subscribe, PRG, duplicate-safe) + dark rounded panel (brand, org contact/socials from settings, 3 link columns, car photo). New newsletter_subscribers table (schema + live). Admin notifications page manages subscribers (unsubscribe). E2E verified (subscribe, message, dupe) + new test. Suite 13/45 green. Status: Completed.
 

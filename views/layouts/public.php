@@ -109,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
       <a href="<?= url('services/booking.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/booking.php') ?>">Book a Ride</a>
       <a href="<?= url('services/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/index.php') ?>">Services</a>
       <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport Transfers</a>
+      <a href="<?= url('services/blogs/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php']) ?>">Blog</a>
       <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['legal/contact.php', 'legal/faq.php']) ?>">Support</a>
     </nav>
     <div class="flex items-center gap-3">
@@ -131,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
       <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport Transfers</a>
       <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
       <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+      <a href="<?= url('services/blogs/index.php') ?>" class="block px-3 py-2 <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php'], false) ?>">Blog</a>
       <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
       <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active(['legal/contact.php', 'legal/faq.php'], false) ?>">Support</a>
       <a href="<?= url('services/booking.php') ?>" class="btn-gold block text-center rounded-full mt-2">Book Now</a>
@@ -149,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
       <a href="<?= url('services/airport.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/airport.php') ?>">Airport</a>
       <a href="<?= url('services/hourly.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/hourly.php') ?>">Hourly</a>
       <a href="<?= url('services/group-event.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('services/group-event.php') ?>">Groups &amp; Events</a>
+      <a href="<?= url('services/blogs/index.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php']) ?>">Blog</a>
       <a href="<?= url('legal/faq.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/faq.php') ?>">FAQ</a>
       <a href="<?= url('legal/contact.php') ?>" class="hover:text-[#F3D4A6] <?= nav_active('legal/contact.php') ?>">Contact</a>
     </nav>
@@ -170,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'newslet
       <a href="<?= url('services/airport.php') ?>" class="block px-3 py-2 <?= nav_active('services/airport.php', false) ?>">Airport</a>
       <a href="<?= url('services/hourly.php') ?>" class="block px-3 py-2 <?= nav_active('services/hourly.php', false) ?>">Hourly</a>
       <a href="<?= url('services/group-event.php') ?>" class="block px-3 py-2 <?= nav_active('services/group-event.php', false) ?>">Groups &amp; Events</a>
+      <a href="<?= url('services/blogs/index.php') ?>" class="block px-3 py-2 <?= nav_active(['services/blogs/index.php', 'services/blogs/read.php'], false) ?>">Blog</a>
       <a href="<?= url('legal/faq.php') ?>" class="block px-3 py-2 <?= nav_active('legal/faq.php', false) ?>">FAQ</a>
       <a href="<?= url('legal/contact.php') ?>" class="block px-3 py-2 <?= nav_active('legal/contact.php', false) ?>">Contact</a>
       <?php if (current_user('customer')): ?>
@@ -229,7 +233,7 @@ if ($pdo) {
     </nav>
     <nav aria-label="Company">
       <h3 class="label">Company</h3>
-      <ul class="space-y-2 text-sm"><li><a href="<?= url('legal/faq.php') ?>">FAQ</a></li><li><a href="<?= url('legal/contact.php') ?>">Contact</a></li><li><a href="<?= url('legal/terms.php') ?>">Terms</a></li><li><a href="<?= url('legal/privacy.php') ?>">Privacy</a></li></ul>
+      <ul class="space-y-2 text-sm"><li><a href="<?= url('legal/faq.php') ?>">FAQ</a></li><li><a href="<?= url('services/blogs/index.php') ?>">Blog</a></li><li><a href="<?= url('legal/contact.php') ?>">Contact</a></li><li><a href="<?= url('legal/terms.php') ?>">Terms</a></li><li><a href="<?= url('legal/privacy.php') ?>">Privacy</a></li></ul>
     </nav>
     <nav aria-label="Account">
       <h3 class="label">Account</h3>

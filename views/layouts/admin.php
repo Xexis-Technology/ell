@@ -17,7 +17,7 @@
 <div class="admin-shell">
 <aside class="admin-side" aria-label="Admin navigation">
   <div class="font-display text-lg text-[#F3D4A6] px-2 mb-3">Admin</div>
-  <?php $items = ['dashboard.php'=>'Dashboard','bookings.php'=>'Bookings','customers.php'=>'Customers','vehicles.php'=>'Vehicles','drivers.php'=>'Drivers','dispatch.php'=>'Dispatch','pricing.php'=>'Pricing','payments.php'=>'Payments','earnings.php'=>'Earnings','payouts.php'=>'Payouts','reports.php'=>'Reports','group-events.php'=>'Groups','notifications.php'=>'Notifications','cms.php'=>'CMS','settings.php'=>'Settings','audit.php'=>'Audit']; ?>
+  <?php $items = ['dashboard.php'=>'Dashboard','bookings.php'=>'Bookings','customers.php'=>'Customers','vehicles.php'=>'Vehicles','drivers.php'=>'Drivers','dispatch.php'=>'Dispatch','pricing.php'=>'Pricing','payments.php'=>'Payments','earnings.php'=>'Earnings','payouts.php'=>'Payouts','reports.php'=>'Reports','group-events.php'=>'Groups','blog.php'=>'Blog','notifications.php'=>'Notifications','cms.php'=>'CMS','settings.php'=>'Settings','audit.php'=>'Audit']; ?>
   <?php foreach ($items as $f => $label): ?>
     <a href="<?= url('admin/' . $f) ?>" class="<?= ($navActive === $f) ? 'active' : '' ?>"><?= e($label) ?></a>
   <?php endforeach; ?>

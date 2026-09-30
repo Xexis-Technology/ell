@@ -43,6 +43,8 @@ table.data td{padding:.65rem;border-bottom:1px solid #262628}
 .hairline-b{border-bottom:1px solid #262628}
 .flight-code{font-size:.7rem;letter-spacing:.18em;color:var(--gold-mute);font-variant-numeric:tabular-nums;font-weight:600}
 .tabular{font-variant-numeric:tabular-nums}
+.blog-body h2{font-family:"Cormorant Garamond",Georgia,serif;font-size:1.5rem;color:var(--champagne);margin-top:1.25rem}
+.blog-body p{margin-top:.75rem}
 .marquee{overflow:hidden;white-space:nowrap}
 .marquee-track{display:inline-flex;align-items:center;width:max-content;animation:ell-marquee 48s linear infinite;will-change:transform}
 .marquee-track>span{padding-right:2.75rem}

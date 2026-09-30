@@ -241,6 +241,21 @@ final class Phase1Test extends TestCase
         $this->assertEquals(30.00, $c['charge']); // 2 intervals x $15
     }
 
+    public function testBlogSlugAndVisibility(): void
+    {
+        $pdo = self::$pdo;
+        $pdo->exec("DELETE FROM blog_posts WHERE slug LIKE 'qa-%'");
+        $pdo->exec("INSERT INTO blog_posts (slug, title, status, published_at) VALUES ('qa-post','QA','draft',NOW())");
+        $this->assertEquals('qa-test-post', slugify('QA Test Post'));
+        $st = $pdo->prepare("SELECT id FROM blog_posts WHERE slug = ? AND status = 'published' LIMIT 1");
+        $st->execute(['qa-post']);
+        $this->assertFalse((bool)$st->fetch()); // drafts stay hidden
+        $pdo->exec("UPDATE blog_posts SET status='published' WHERE slug='qa-post'");
+        $st->execute(['qa-post']);
+        $this->assertTrue((bool)$st->fetch());
+        $pdo->exec("DELETE FROM blog_posts WHERE slug='qa-post'");
+    }
+
     public function testNewsletterSubscribe(): void
     {
         $pdo = self::$pdo;

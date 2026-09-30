@@ -19,14 +19,15 @@ function asset(string $path): string
     return url('assets/' . ltrim($path, '/'));
 }
 
-/** Returns an active class when the current script matches one of the given app-relative paths. */
+/** Returns an active class when the current script path ends with one of the given app-relative paths. */
 function nav_active(string|array $paths, bool $underline = true): string
 {
-    $parts = array_values(array_filter(explode('/', (string)($_SERVER['SCRIPT_NAME'] ?? ''))));
-    $c = count($parts);
-    $cur = $c >= 3 ? $parts[$c - 2] . '/' . $parts[$c - 1] : ($parts[$c - 1] ?? '');
+    $script = '/' . ltrim((string)($_SERVER['SCRIPT_NAME'] ?? ''), '/');
     foreach ((array)$paths as $p) {
-        if ($p === $cur) return $underline ? 'nav-active' : 'text-[#F3D4A6]';
+        $p = '/' . ltrim((string)$p, '/');
+        if ($script === $p || str_ends_with($script, $p)) {
+            return $underline ? 'nav-active' : 'text-[#F3D4A6]';
+        }
     }
     return '';
 }
