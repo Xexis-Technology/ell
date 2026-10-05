@@ -21,7 +21,7 @@ $page = $st->fetch();
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">CMS</h1>
+<div class="page-head"><div><p class="eyebrow">Content</p><h1 class="font-display text-3xl mt-1">CMS</h1></div></div>
 <p class="text-sm"><?php foreach ($pages as $p): ?><a class="underline" href="<?= url('admin/cms.php?slug=' . $p['slug']) ?>"><?= e($p['slug']) ?></a> · <?php endforeach; ?></p>
 <?php if ($page): ?>
 <form method="post" class="card p-4 mt-3 space-y-3"><?= csrf_field() ?><input type="hidden" name="slug" value="<?= e($page['slug']) ?>">

@@ -59,14 +59,14 @@ $refs = $pdo->query('SELECT r.*, p.booking_id FROM refunds r JOIN payments p ON 
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Payments &amp; Refunds</h1>
+<div class="page-head"><div><p class="eyebrow">Money</p><h1 class="font-display text-3xl mt-1">Payments &amp; Refunds</h1></div></div>
 <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>ID</th><th>Booking</th><th>Provider</th><th>Amount</th><th>Status</th><th>Provider ID</th><th>Refund</th></tr></thead><tbody>
-<?php foreach ($pays as $p): ?><tr><td><?= (int)$p['id'] ?></td><td><a class="underline" href="<?= url('admin/bookings.php?action=view&n=' . $p['booking_number']) ?>"><?= e($p['booking_number']) ?></a></td><td><?= e($p['provider']) ?></td><td>$<?= money($p['amount']) ?></td><td><?= e($p['status']) ?></td><td class="text-xs"><?= e((string)($p['provider_payment_id'] ?? '')) ?></td>
+<?php foreach ($pays as $p): ?><tr><td><?= (int)$p['id'] ?></td><td><a class="underline" href="<?= url('admin/bookings.php?action=view&n=' . $p['booking_number']) ?>"><?= e($p['booking_number']) ?></a></td><td><?= e($p['provider']) ?></td><td>$<?= money($p['amount']) ?></td><td><?= status_pill($p['status']) ?></td><td class="text-xs"><?= e((string)($p['provider_payment_id'] ?? '')) ?></td>
 <td><?php if (in_array($p['status'], ['paid','partially_refunded'], true)): ?><form method="post" class="flex gap-1"><?= csrf_field() ?><input type="hidden" name="op" value="refund"><input type="hidden" name="payment_id" value="<?= (int)$p['id'] ?>"><input name="amount" type="number" step="0.01" max="<?= e((string)$p['amount']) ?>" class="input" style="width:90px" placeholder="Amt" required><input name="reason" class="input" style="width:110px" placeholder="Reason"><button class="btn-gold" data-confirm="Issue this refund?">Refund</button></form><?php endif; ?></td></tr><?php endforeach; ?>
 </tbody></table></div>
 <h2 class="font-display text-2xl mt-6">Refund records</h2>
 <div class="table-wrap card mt-2"><table class="data"><thead><tr><th>ID</th><th>Payment</th><th>Amount</th><th>Status</th><th>Reason</th></tr></thead><tbody>
-<?php foreach ($refs as $r): ?><tr><td><?= (int)$r['id'] ?></td><td><?= (int)$r['payment_id'] ?></td><td>$<?= money($r['amount']) ?></td><td><?= e($r['status']) ?></td><td><?= e((string)($r['reason'] ?? '')) ?></td></tr><?php endforeach; ?>
+<?php foreach ($refs as $r): ?><tr><td><?= (int)$r['id'] ?></td><td><?= (int)$r['payment_id'] ?></td><td>$<?= money($r['amount']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= e((string)($r['reason'] ?? '')) ?></td></tr><?php endforeach; ?>
 </tbody></table></div>
 <?php
 $content = ob_get_clean();

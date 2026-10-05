@@ -33,9 +33,9 @@ $rows = $pdo->query('SELECT p.*, d.name AS dname FROM driver_payouts p JOIN driv
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Driver Payouts</h1>
+<div class="page-head"><div><p class="eyebrow">Money</p><h1 class="font-display text-3xl mt-1">Driver Payouts</h1></div></div>
 <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>Driver</th><th>Amount</th><th>Status</th><th>Requested</th><th>Notes</th><th></th></tr></thead><tbody>
-<?php foreach ($rows as $r): ?><tr><td><?= e($r['dname']) ?></td><td>$<?= money($r['amount']) ?></td><td><?= e($r['status']) ?></td><td><?= e($r['requested_at']) ?></td><td><?= e((string)($r['notes'] ?? '')) ?></td>
+<?php foreach ($rows as $r): ?><tr><td><?= e($r['dname']) ?></td><td>$<?= money($r['amount']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= e($r['requested_at']) ?></td><td><?= e((string)($r['notes'] ?? '')) ?></td>
 <td class="whitespace-nowrap"><?php if ($r['status'] === 'requested'): ?>
 <form method="post" style="display:inline"><?= csrf_field() ?><input type="hidden" name="op" value="approve"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><button class="btn-gold">Approve</button></form>
 <form method="post" style="display:inline"><?= csrf_field() ?><input type="hidden" name="op" value="reject"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input name="notes" class="input" style="width:120px;display:inline" placeholder="Reason"><button class="btn-danger-outline">Reject</button></form>

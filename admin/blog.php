@@ -91,7 +91,7 @@ if ($action === 'edit') {
     <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
     <h1 class="font-display text-3xl">Blog <a href="<?= url('admin/blog.php?action=edit') ?>" class="btn-gold text-base align-middle">+ New post</a></h1>
     <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Published</th><th></th></tr></thead><tbody>
-    <?php foreach ($rows as $r): ?><tr><td><?= e($r['title']) ?></td><td class="text-xs"><?= e($r['slug']) ?></td><td><?= e($r['status']) ?></td><td><?= e((string)($r['published_at'] ?? '')) ?></td>
+    <?php foreach ($rows as $r): ?><tr><td><?= e($r['title']) ?></td><td class="text-xs"><?= e($r['slug']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= e((string)($r['published_at'] ?? '')) ?></td>
     <td class="whitespace-nowrap"><a class="underline" href="<?= url('admin/blog.php?action=edit&id=' . (int)$r['id']) ?>">Edit</a>
     <?php if ($r['status'] === 'published'): ?><a class="underline" href="<?= url('services/blogs/read.php?slug=' . urlencode($r['slug'])) ?>">View</a><?php endif; ?>
     <form method="post" style="display:inline" onsubmit="return confirm('Delete this post?')"><?= csrf_field() ?><input type="hidden" name="op" value="delete"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><button class="btn-danger-outline">Delete</button></form></td></tr><?php endforeach; ?>

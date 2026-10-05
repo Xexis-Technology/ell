@@ -15,6 +15,13 @@ final class Database
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
+        // Align MySQL session time with the app timezone so NOW()/CURDATE()
+        // writes stay consistent with PHP-generated datetimes (offset form
+        // always works, even without loaded timezone tables).
+        try {
+            self::$pdo->exec("SET time_zone = '" . date('P') . "'");
+        } catch (Throwable) {
+        }
         return self::$pdo;
     }
 

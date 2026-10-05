@@ -73,10 +73,13 @@ function issue_reset_token(PDO $pdo, string $role, int $userId): string
 function consume_reset_token(PDO $pdo, string $role, string $raw): ?array
 {
     $hash = hash('sha256', $raw);
-    $st = $pdo->prepare('SELECT * FROM password_resets WHERE role = ? AND token_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1');
+    // Expiry is compared in PHP (same clock that issued the token), never MySQL NOW(),
+    // so app/database timezone splits cannot silently invalidate tokens.
+    $st = $pdo->prepare('SELECT * FROM password_resets WHERE role = ? AND token_hash = ? AND used_at IS NULL LIMIT 1');
     $st->execute([$role, $hash]);
     $row = $st->fetch();
     if (!$row) return null;
+    if (strtotime((string)($row['expires_at'] ?? '')) <= time()) return null;
     $pdo->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = ?')->execute([$row['id']]);
     return $row;
 }

@@ -16,7 +16,7 @@ $st->execute($params);
 $rows = $st->fetchAll();
 ob_start();
 ?>
-<h1 class="font-display text-3xl">Audit Log</h1>
+<div class="page-head"><div><p class="eyebrow">System</p><h1 class="font-display text-3xl mt-1">Audit Log</h1></div></div>
 <form method="get" class="flex gap-2 mt-3"><input name="q" class="input" style="max-width:240px" placeholder="Search action/entity/actor" value="<?= e($q) ?>"><button class="btn-gold">Search</button></form>
 <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>IP</th></tr></thead><tbody>
 <?php foreach ($rows as $r): ?><tr><td><?= e($r['created_at']) ?></td><td><?= e($r['actor_type']) ?> <?= e((string)($r['actor_id'] ?? '')) ?></td><td><?= e($r['action']) ?></td><td><?= e((string)($r['entity_type'] ?? '')) ?> <?= e((string)($r['entity_id'] ?? '')) ?></td><td><?= e((string)($r['ip_address'] ?? '')) ?></td></tr><?php endforeach; ?>

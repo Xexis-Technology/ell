@@ -131,9 +131,9 @@ if ($action === 'create') {
     $vehicles = $pdo->query('SELECT v.id, v.make, v.model FROM vehicles v WHERE v.status = "active" ORDER BY v.id')->fetchAll();
     ?>
     <?php if ($msg): ?><div class="alert alert-err"><?= e($msg) ?></div><?php endif; ?>
-    <h1 class="font-display text-3xl">New Booking (admin)</h1>
-    <p class="text-sm">Admin-created bookings support offline/manual payment afterwards. Totals are calculated server-side.</p>
-    <form method="post" class="card p-4 mt-3 space-y-3"><?= csrf_field() ?><input type="hidden" name="op" value="admin_create">
+    <div class="page-head"><div><p class="eyebrow">Operations</p><h1 class="font-display text-3xl mt-1">New booking</h1></div></div>
+    <p class="text-sm text-[#AB8868] mt-1">Admin-created bookings support offline/manual payment afterwards. Totals are calculated server-side.</p>
+    <form method="post" class="card rounded-2xl p-5 mt-3 space-y-4"><?= csrf_field() ?><input type="hidden" name="op" value="admin_create">
       <div><label class="label" for="customer_id">Customer (or guest below)</label>
         <select id="customer_id" name="customer_id" class="input"><option value="0">— Guest booking —</option><?php foreach ($customers as $c): ?><option value="<?= (int)$c['id'] ?>"><?= e($c['name'] . ' (' . $c['email'] . ')') ?></option><?php endforeach; ?></select></div>
       <div class="grid md:grid-cols-3 gap-2">
@@ -174,8 +174,8 @@ if ($action === 'create') {
     } else {
         ?>
         <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-        <h1 class="font-display text-3xl">Edit Booking <?= e($eb['booking_number']) ?></h1>
-        <form method="post" class="card p-4 mt-3 space-y-3"><?= csrf_field() ?><input type="hidden" name="op" value="admin_edit"><input type="hidden" name="booking_id" value="<?= (int)$eb['id'] ?>">
+        <div class="page-head"><div><p class="eyebrow">Operations</p><h1 class="font-display text-3xl mt-1">Edit booking <span class="tabular"><?= e($eb['booking_number']) ?></span></h1></div><a href="<?= url('admin/bookings.php?action=view&n=' . $eb['booking_number']) ?>" class="text-sm underline">Back to view</a></div>
+        <form method="post" class="card rounded-2xl p-5 mt-3 space-y-4"><?= csrf_field() ?><input type="hidden" name="op" value="admin_edit"><input type="hidden" name="booking_id" value="<?= (int)$eb['id'] ?>">
           <div class="grid md:grid-cols-2 gap-2">
             <div><label class="label" for="pickup_location">Pickup</label><input id="pickup_location" name="pickup_location" class="input" required value="<?= e($eb['pickup_location']) ?>"></div>
             <div><label class="label" for="destination_location">Destination</label><input id="destination_location" name="destination_location" class="input" required value="<?= e($eb['destination_location']) ?>"></div>
@@ -194,74 +194,186 @@ if ($action === 'create') {
         <?php
     }
 } elseif ($action === 'view' && !empty($_GET['n'])) {
-    $st = $pdo->prepare('SELECT b.*, v.make, v.model, c.name AS cname, c.email AS cemail FROM bookings b LEFT JOIN vehicles v ON v.id = b.vehicle_id LEFT JOIN customers c ON c.id = b.customer_id WHERE b.booking_number = ? LIMIT 1');
+    $st = $pdo->prepare('SELECT b.*, v.make, v.model, v.plate, c.name AS cname, c.email AS cemail, c.phone AS cphone FROM bookings b LEFT JOIN vehicles v ON v.id = b.vehicle_id LEFT JOIN customers c ON c.id = b.customer_id WHERE b.booking_number = ? LIMIT 1');
     $st->execute([$_GET['n']]);
     $b = $st->fetch();
     if (!$b) {
         echo '<p>Not found.</p>';
     } else {
+        $bid = (int)$b['id'];
         $st = $pdo->prepare('SELECT * FROM booking_stops WHERE booking_id = ? ORDER BY stop_order');
-        $st->execute([$b['id']]);
+        $st->execute([$bid]);
         $stops = $st->fetchAll();
-        $st = $pdo->prepare('SELECT * FROM booking_charges WHERE booking_id = ?');
-        $st->execute([$b['id']]);
+        $st = $pdo->prepare('SELECT * FROM booking_charges WHERE booking_id = ? ORDER BY id');
+        $st->execute([$bid]);
         $charges = $st->fetchAll();
         $st = $pdo->prepare('SELECT * FROM payments WHERE booking_id = ? ORDER BY id DESC');
-        $st->execute([$b['id']]);
+        $st->execute([$bid]);
         $pays = $st->fetchAll();
         $st = $pdo->prepare('SELECT * FROM booking_status_logs WHERE booking_id = ? ORDER BY id DESC LIMIT 20');
-        $st->execute([$b['id']]);
+        $st->execute([$bid]);
         $logs = $st->fetchAll();
+        $st = $pdo->prepare('SELECT d.*, dr.name AS drname, dr.phone AS drphone FROM dispatches d LEFT JOIN drivers dr ON dr.id = d.driver_id WHERE d.booking_id = ? ORDER BY d.id DESC LIMIT 1');
+        $st->execute([$bid]);
+        $dispatch = $st->fetch() ?: null;
         $vehicles = $pdo->query('SELECT id, make, model FROM vehicles WHERE status = "active" ORDER BY id')->fetchAll();
+
+        $pretty = static fn(?string $s): string => ucwords(str_replace('_', ' ', trim((string)$s)));
+        $qty = static fn($n): string => rtrim(rtrim(number_format((float)$n, 2, '.', ''), '0'), '.');
+        $vehicleName = trim(($b['make'] ?? '') . ' ' . ($b['model'] ?? ''));
+        $custName = $b['cname'] ?: ($b['guest_name'] ?: 'Guest booking');
+        $custEmail = $b['cemail'] ?: ($b['guest_email'] ?: '');
+        $custPhone = $b['cphone'] ?: ($b['guest_phone'] ?: '');
+        $paidTotal = 0.0;
+        foreach ($pays as $p) if ($p['status'] === 'paid') $paidTotal += (float)$p['amount'];
+        $addons = json_decode((string)($b['addons_json'] ?? ''), true);
+        $addonLabels = ['meet_greet' => 'Meet & Greet', 'child_seat' => 'Child Seat', 'booster_seat' => 'Booster Seat'];
+        $addonList = [];
+        if (is_array($addons)) foreach ($addons as $k => $on) if (!empty($on)) $addonList[] = $addonLabels[$k] ?? ucwords(str_replace('_', ' ', (string)$k));
         ?>
         <?php if ($msg): ?><div class="alert <?= $isErr ? 'alert-err' : 'alert-ok' ?>"><?= e($msg) ?></div><?php endif; ?>
-        <h1 class="font-display text-3xl">Booking <?= e($b['booking_number']) ?> <a href="<?= url('admin/bookings.php?action=edit&id=' . (int)$b['id']) ?>" class="btn-gold text-base align-middle">Edit</a></h1>
-        <div class="card p-5 mt-3 text-sm space-y-1">
-          <p><strong>Customer:</strong> <?= e($b['cname'] ?? $b['guest_name'] ?? '—') ?> (<?= e($b['cemail'] ?? $b['guest_email'] ?? '') ?>)</p>
-          <p><strong>Service:</strong> <?= e($b['service_type']) ?> · <?= e($b['trip_type']) ?> · <?= e((string)($b['airport_direction'] ?? '')) ?></p>
-          <p><strong>Route:</strong> <?= e($b['pickup_location']) ?> → <?= e($b['destination_location']) ?></p>
-          <?php foreach ($stops as $s): ?><p><strong>Stop <?= (int)$s['stop_order'] ?>:</strong> <?= e($s['location']) ?></p><?php endforeach; ?>
-          <p><strong>Pickup:</strong> <?= e($b['pickup_date']) ?> <?= e($b['pickup_time']) ?> · <?= (int)$b['passengers'] ?> pax · <?= (int)$b['luggage'] ?> bags</p>
-          <p><strong>Vehicle:</strong> <?= e(trim(($b['make'] ?? '') . ' ' . ($b['model'] ?? ''))) ?> · mileage <?= e((string)($b['mileage'] ?? '—')) ?> · hours <?= e((string)($b['hours'] ?? '—')) ?></p>
-          <p><strong>Status:</strong> <?= e($b['status']) ?> · <strong>Payment:</strong> <?= e($b['payment_status']) ?></p>
-          <h3 class="label mt-2">Charges</h3>
-          <?php foreach ($charges as $c): ?><p><?= e($c['description']) ?> — $<?= money($c['total']) ?></p><?php endforeach; ?>
-          <p><strong>Total $<?= money($b['total']) ?></strong> (sub $<?= money($b['subtotal']) ?> − disc $<?= money($b['discount']) ?> + tax $<?= money($b['tax']) ?>)</p>
-          <h3 class="label mt-2">Payments</h3>
-          <?php foreach ($pays as $p): ?><p>#<?= (int)$p['id'] ?> <?= e($p['provider']) ?> $<?= money($p['amount']) ?> — <?= e($p['status']) ?> <?= e((string)($p['provider_payment_id'] ?? '')) ?></p><?php endforeach; ?>
+
+        <nav class="bk-crumbs" aria-label="Breadcrumb">
+          <a href="<?= url('admin/bookings.php?action=list') ?>"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> All bookings</a>
+          <span aria-hidden="true">/</span><span class="tabular"><?= e($b['booking_number']) ?></span>
+        </nav>
+
+        <div class="page-head mt-2">
+          <div>
+            <p class="eyebrow">Booking detail</p>
+            <h1 class="font-display text-3xl mt-1"><?= e($b['booking_number']) ?></h1>
+            <p class="bk-head-pills"><?= status_pill($b['status']) ?><?= status_pill($b['payment_status']) ?><span class="pill pill-gold"><?= e($pretty($b['pricing_status'])) ?></span></p>
+          </div>
+          <div class="bk-actions">
+            <a class="bk-btn bk-btn-line" href="<?= url('admin/bookings.php?action=edit&id=' . $bid) ?>"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit trip</a>
+            <a class="bk-btn bk-btn-line" href="<?= url('admin/dispatch.php') ?>"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Dispatch</a>
+          </div>
         </div>
-        <div class="grid md:grid-cols-2 gap-4 mt-4">
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="mileage"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <h3 class="label">Set mileage + finalize</h3>
-            <select name="vehicle_id" class="input"><?php foreach ($vehicles as $v): ?><option value="<?= (int)$v['id'] ?>" <?= (int)$b['vehicle_id'] === (int)$v['id'] ? 'selected' : '' ?>><?= e($v['make'] . ' ' . $v['model']) ?></option><?php endforeach; ?></select>
-            <input name="mileage" type="number" step="0.1" class="input" placeholder="Mileage" value="<?= e((string)($b['mileage'] ?? '')) ?>">
-            <button class="btn-gold">Set mileage</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="finalize"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <h3 class="label">Finalize price (charges + coupon)</h3>
-            <input name="mileage" type="number" step="0.1" class="input" placeholder="Mileage" value="<?= e((string)($b['mileage'] ?? '')) ?>">
-            <input name="hours" type="number" step="0.5" class="input" placeholder="Hours" value="<?= e((string)($b['hours'] ?? '')) ?>">
-            <input name="coupon_code" class="input" placeholder="Coupon code">
-            <div class="grid grid-cols-3 gap-1"><input name="mc_code[]" class="input" placeholder="code (toll)"><input name="mc_label[]" class="input" placeholder="label"><input name="mc_amount[]" type="number" step="0.01" class="input" placeholder="amount"></div>
-            <button class="btn-gold">Finalize price</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="payment_link"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <h3 class="label">Payment link</h3><button class="btn-gold">Generate + email link</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="offline_pay"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <h3 class="label">Offline payment</h3><input name="amount" type="number" step="0.01" class="input" placeholder="Amount" required><input name="note" class="input" placeholder="Note"><button class="btn-gold">Record offline</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="status"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <h3 class="label">Change status</h3>
-            <select name="new_status" class="input"><?php foreach (BookingService::VALID_STATUSES as $s): ?><option><?= e($s) ?></option><?php endforeach; ?></select>
-            <button class="btn-gold">Update status</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="confirm"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <button class="btn-gold">Confirm booking</button></form>
-          <form method="post" class="card p-4 space-y-2" onsubmit="return confirm('Cancel this booking?')"><?= csrf_field() ?><input type="hidden" name="op" value="cancel"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <button class="btn-danger-outline">Cancel booking</button></form>
-          <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="mark_paid"><input type="hidden" name="booking_id" value="<?= (int)$b['id'] ?>">
-            <button class="btn-gold">Mark paid</button></form>
+
+        <div class="bk-strip mt-4">
+          <div><span class="bk-k">Pickup</span><span class="bk-v tabular"><?= e(date('D, j M Y', strtotime((string)$b['pickup_date']))) ?></span><span class="bk-m tabular"><?= e(substr((string)$b['pickup_time'], 0, 5)) ?></span></div>
+          <div><span class="bk-k">Service</span><span class="bk-v"><?= e($pretty($b['service_type'])) ?></span><span class="bk-m"><?= e($pretty($b['trip_type'])) ?><?= $b['airport_direction'] ? ' · ' . e($pretty($b['airport_direction'])) : '' ?></span></div>
+          <div><span class="bk-k">Party</span><span class="bk-v"><?= (int)$b['passengers'] ?> pax</span><span class="bk-m"><?= (int)$b['luggage'] ?> bag<?= (int)$b['luggage'] === 1 ? '' : 's' ?></span></div>
+          <div><span class="bk-k">Vehicle</span><span class="bk-v"><?= $vehicleName !== '' ? e($vehicleName) : 'Unassigned' ?></span><span class="bk-m"><?= e((string)($b['plate'] ?? '—')) ?></span></div>
+          <div><span class="bk-k">Balance</span><span class="bk-v bk-total">$<?= money(max(0, (float)$b['total'] - $paidTotal)) ?></span><span class="bk-m tabular">$<?= money($paidTotal) ?> of $<?= money($b['total']) ?> paid</span></div>
         </div>
-        <h3 class="font-display text-xl mt-4">Status history</h3>
-        <div class="table-wrap card mt-2"><table class="data"><thead><tr><th>When</th><th>From</th><th>To</th><th>Actor</th><th>Note</th></tr></thead><tbody>
-        <?php foreach ($logs as $l): ?><tr><td><?= e($l['created_at']) ?></td><td><?= e((string)$l['old_status']) ?></td><td><?= e($l['new_status']) ?></td><td><?= e($l['actor_type']) ?></td><td><?= e((string)($l['note'] ?? '')) ?></td></tr><?php endforeach; ?>
-        </tbody></table></div>
+
+        <section class="bk-quick mt-3" aria-label="Quick actions">
+          <span class="bk-k">Quick actions</span>
+          <div class="bk-actions">
+            <form method="post" class="bk-inline"><?= csrf_field() ?><input type="hidden" name="op" value="confirm"><input type="hidden" name="booking_id" value="<?= $bid ?>"><button class="bk-btn bk-btn-gold"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Confirm</button></form>
+            <form method="post" class="bk-inline"><?= csrf_field() ?><input type="hidden" name="op" value="mark_paid"><input type="hidden" name="booking_id" value="<?= $bid ?>"><button class="bk-btn bk-btn-line"><i class="fa-solid fa-circle-dollar" aria-hidden="true"></i> Mark paid</button></form>
+            <form method="post" class="bk-inline"><?= csrf_field() ?><input type="hidden" name="op" value="payment_link"><input type="hidden" name="booking_id" value="<?= $bid ?>"><button class="bk-btn bk-btn-line"><i class="fa-solid fa-link" aria-hidden="true"></i> Send payment link</button></form>
+            <form method="post" class="bk-inline" onsubmit="return confirm('Cancel this booking?')"><?= csrf_field() ?><input type="hidden" name="op" value="cancel"><input type="hidden" name="booking_id" value="<?= $bid ?>"><button class="bk-btn bk-btn-danger"><i class="fa-solid fa-ban" aria-hidden="true"></i> Cancel</button></form>
+          </div>
+        </section>
+
+        <div class="bk-grid mt-4">
+          <div class="bk-stack">
+            <section class="bk-sec">
+              <h3>Route &amp; schedule <span class="bk-sub"><?= count($stops) ?> stop<?= count($stops) === 1 ? '' : 's' ?></span></h3>
+              <ol class="bk-tl">
+                <li class="bk-node"><span class="bk-tag">Pickup</span><?= e($b['pickup_location']) ?><span class="bk-m"><?= e($b['pickup_date']) ?> at <?= e(substr((string)$b['pickup_time'], 0, 5)) ?> · <?= (int)$b['passengers'] ?> pax · <?= (int)$b['luggage'] ?> bag<?= (int)$b['luggage'] === 1 ? '' : 's' ?></span></li>
+                <?php foreach ($stops as $s): ?>
+                <li class="bk-node is-stop"><span class="bk-tag">Stop <?= (int)$s['stop_order'] ?></span><?= e($s['location']) ?></li>
+                <?php endforeach; ?>
+                <li class="bk-node is-end"><span class="bk-tag">Drop</span><?= e($b['destination_location']) ?></li>
+              </ol>
+              <div class="bk-facts">
+                <div><span class="bk-k">Mileage</span><span class="bk-v tabular"><?= $b['mileage'] !== null ? e($qty($b['mileage'])) . ' mi' : '—' ?></span></div>
+                <div><span class="bk-k">Hours</span><span class="bk-v tabular"><?= $b['hours'] !== null ? e($qty($b['hours'])) . ' hr' : '—' ?></span></div>
+                <div><span class="bk-k">Driver</span><span class="bk-v"><?= $dispatch ? e((string)$dispatch['drname'] ?: 'Temporary') : '—' ?></span><?php if ($dispatch && $dispatch['drphone']): ?><span class="bk-m"><?= e($dispatch['drphone']) ?></span><?php endif; ?></div>
+                <div><span class="bk-k">Booked</span><span class="bk-v tabular"><?= e(substr((string)$b['created_at'], 0, 10)) ?></span><span class="bk-m"><?= e(substr((string)$b['created_at'], 11, 5)) ?></span></div>
+                <div><span class="bk-k">Finalized</span><span class="bk-v tabular"><?= $b['pricing_finalized_at'] ? e(substr((string)$b['pricing_finalized_at'], 0, 10)) : '—' ?></span></div>
+                <div><span class="bk-k">Add-ons</span><span class="bk-v"><?= $addonList ? e(implode(', ', $addonList)) : 'None' ?></span></div>
+              </div>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Charges <span class="bk-sub"><?= e($pretty($b['pricing_status'])) ?> snapshot</span></h3>
+              <?php if ($charges): ?>
+              <div class="table-wrap"><table class="data"><thead><tr><th>Description</th><th class="hidden sm:table-cell">Source</th><th class="text-right">Qty</th><th class="text-right">Total</th></tr></thead><tbody>
+                <?php foreach ($charges as $c): ?><tr><td><?= e($c['description']) ?></td><td class="hidden sm:table-cell text-xs text-[#8a8a8a]"><?= e($pretty($c['source'])) ?></td><td class="tabular text-right"><?= e($qty($c['quantity'])) ?></td><td class="tabular text-right">$<?= money($c['total']) ?></td></tr><?php endforeach; ?>
+              </tbody></table></div>
+              <?php else: ?><p class="bk-empty">No charge lines yet — finalize the price to generate them.</p><?php endif; ?>
+              <div class="bk-totals tabular">
+                <div><span>Subtotal</span><span>$<?= money($b['subtotal']) ?></span></div>
+                <div><span>Discount</span><span>−$<?= money($b['discount']) ?></span></div>
+                <div><span>Tax</span><span>$<?= money($b['tax']) ?></span></div>
+                <div class="bk-grand"><span>Total</span><span>$<?= money($b['total']) ?></span></div>
+              </div>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Payments <span class="bk-sub"><?= count($pays) ?> record<?= count($pays) === 1 ? '' : 's' ?></span></h3>
+              <?php if ($pays): ?>
+              <div class="table-wrap"><table class="data"><thead><tr><th>#</th><th>Provider</th><th>Status</th><th class="hidden md:table-cell">Paid at</th><th class="text-right">Amount</th></tr></thead><tbody>
+                <?php foreach ($pays as $p): ?><tr><td class="tabular"><?= (int)$p['id'] ?></td><td><?= e($pretty($p['provider'])) ?><?php if ($p['method']): ?><span class="hidden sm:inline text-xs text-[#8a8a8a]"><?= ' · ' . e($p['method']) ?></span><?php endif; ?></td><td><?= status_pill($p['status']) ?></td><td class="tabular text-xs hidden md:table-cell"><?= e($p['paid_at'] ?: '—') ?></td><td class="tabular text-right">$<?= money($p['amount']) ?></td></tr><?php endforeach; ?>
+              </tbody></table></div>
+              <?php else: ?><p class="bk-empty">No payments recorded yet.</p><?php endif; ?>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Status history <span class="bk-sub">Latest <?= count($logs) ?></span></h3>
+              <?php if ($logs): ?>
+              <div class="table-wrap"><table class="data"><thead><tr><th>When</th><th class="hidden xl:table-cell">From</th><th>To</th><th class="hidden 2xl:table-cell">Actor</th><th>Note</th></tr></thead><tbody>
+                <?php foreach ($logs as $l): ?><tr><td class="tabular text-xs"><span class="xl:hidden"><?= e(substr((string)$l['created_at'], 5, 5)) ?><?= $l['created_at'] ? '<br>' . e(substr((string)$l['created_at'], 11, 5)) : '' ?></span><span class="hidden xl:inline"><?= e($l['created_at']) ?></span></td><td class="hidden xl:table-cell"><?= $l['old_status'] ? status_pill((string)$l['old_status']) : '<span class="bk-empty">—</span>' ?></td><td><?= status_pill($l['new_status']) ?></td><td class="hidden 2xl:table-cell"><?= e($pretty($l['actor_type'])) ?></td><td class="text-xs"><?= e((string)($l['note'] ?? '')) ?></td></tr><?php endforeach; ?>
+              </tbody></table></div>
+              <?php else: ?><p class="bk-empty">No status changes recorded.</p><?php endif; ?>
+            </section>
+          </div>
+
+          <aside class="bk-stack" aria-label="Booking tools">
+            <section class="bk-sec">
+              <h3>Customer</h3>
+              <p class="bk-v"><?= e($custName) ?></p>
+              <?php if ($custEmail): ?><p class="bk-m"><a class="bk-link" href="mailto:<?= e($custEmail) ?>"><?= e($custEmail) ?></a></p><?php endif; ?>
+              <?php if ($custPhone): ?><p class="bk-m"><a class="bk-link" href="tel:<?= e(preg_replace('/[^\d+]/', '', $custPhone)) ?>"><?= e($custPhone) ?></a></p><?php endif; ?>
+              <p class="bk-m"><?= $b['customer_id'] ? 'Registered customer' : 'Guest booking' ?></p>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Change status</h3>
+              <form method="post" class="bk-form"><?= csrf_field() ?><input type="hidden" name="op" value="status"><input type="hidden" name="booking_id" value="<?= $bid ?>">
+                <select name="new_status" class="input" aria-label="New status"><?php foreach (BookingService::VALID_STATUSES as $s): ?><option value="<?= e($s) ?>" <?= $b['status'] === $s ? 'selected' : '' ?>><?= e($pretty($s)) ?></option><?php endforeach; ?></select>
+                <button class="bk-btn bk-btn-gold">Update status</button>
+              </form>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Pricing</h3>
+              <form method="post" class="bk-form"><?= csrf_field() ?><input type="hidden" name="op" value="mileage"><input type="hidden" name="booking_id" value="<?= $bid ?>">
+                <p class="bk-form-head">Set mileage &amp; finalize</p>
+                <select name="vehicle_id" class="input" aria-label="Vehicle"><?php foreach ($vehicles as $v): ?><option value="<?= (int)$v['id'] ?>" <?= (int)$b['vehicle_id'] === (int)$v['id'] ? 'selected' : '' ?>><?= e($v['make'] . ' ' . $v['model']) ?></option><?php endforeach; ?></select>
+                <input name="mileage" type="number" step="0.1" min="0" class="input" placeholder="Mileage (mi)" value="<?= e((string)($b['mileage'] ?? '')) ?>">
+                <button class="bk-btn bk-btn-gold">Finalize with mileage</button>
+              </form>
+              <form method="post" class="bk-form"><?= csrf_field() ?><input type="hidden" name="op" value="finalize"><input type="hidden" name="booking_id" value="<?= $bid ?>">
+                <p class="bk-form-head">Full finalize (charges &amp; coupon)</p>
+                <div class="bk-row2">
+                  <input name="mileage" type="number" step="0.1" min="0" class="input" placeholder="Mileage" value="<?= e((string)($b['mileage'] ?? '')) ?>" aria-label="Mileage">
+                  <input name="hours" type="number" step="0.5" min="0" class="input" placeholder="Hours" value="<?= e((string)($b['hours'] ?? '')) ?>" aria-label="Hours">
+                </div>
+                <input name="coupon_code" class="input" placeholder="Coupon code (optional)" aria-label="Coupon code">
+                <div class="bk-row2">
+                  <input name="mc_code[]" class="input" placeholder="Charge code" aria-label="Charge code">
+                  <input name="mc_label[]" class="input" placeholder="Charge label" aria-label="Charge label">
+                </div>
+                <input name="mc_amount[]" type="number" step="0.01" min="0" class="input" placeholder="Charge amount" aria-label="Charge amount">
+                <button class="bk-btn bk-btn-line">Finalize full price</button>
+              </form>
+            </section>
+
+            <section class="bk-sec">
+              <h3>Record offline payment</h3>
+              <form method="post" class="bk-form"><?= csrf_field() ?><input type="hidden" name="op" value="offline_pay"><input type="hidden" name="booking_id" value="<?= $bid ?>">
+                <input name="amount" type="number" step="0.01" min="0.01" class="input" placeholder="Amount ($)" required aria-label="Amount">
+                <input name="note" class="input" placeholder="Note (cash, card, ref #)" aria-label="Note">
+                <button class="bk-btn bk-btn-line">Record payment</button>
+              </form>
+            </section>
+          </aside>
+        </div>
         <?php
     }
 } else {
@@ -285,15 +397,31 @@ if ($action === 'create') {
     $rows = $st->fetchAll();
     ?>
     <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-    <h1 class="font-display text-3xl">Bookings <a href="<?= url('admin/bookings.php?action=create') ?>" class="btn-gold text-base align-middle">+ New booking</a></h1>
-    <form method="get" class="flex gap-2 mt-3">
-      <input type="hidden" name="action" value="list">
-      <input name="q" class="input" style="max-width:240px" placeholder="Search" value="<?= e($q) ?>" aria-label="Search">
-      <select name="status" class="input" style="max-width:200px" aria-label="Status"><option value="">All</option><?php foreach (BookingService::VALID_STATUSES as $s): ?><option <?= $status === $s ? 'selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?></select>
-      <button class="btn-gold">Filter</button>
-    </form>
-    <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>Number</th><th>Date</th><th>Service</th><th>Status</th><th>Payment</th><th>Total</th></tr></thead><tbody>
-    <?php foreach ($rows as $r): ?><tr><td><a class="underline" href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>"><?= e($r['booking_number']) ?></a></td><td><?= e($r['pickup_date']) ?></td><td><?= e($r['service_type']) ?></td><td><?= e($r['status']) ?></td><td><?= e($r['payment_status']) ?></td><td>$<?= money($r['total']) ?></td></tr><?php endforeach; ?>
+    <div class="page-head"><div><p class="eyebrow">Operations</p><h1 class="font-display text-3xl mt-1">Bookings</h1></div><a href="<?= url('admin/bookings.php?action=create') ?>" class="btn-gold rounded-full text-sm px-5 py-2.5 inline-flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-[#0A0A0C] text-[#D9B978] inline-flex items-center justify-center font-bold" aria-hidden="true">+</span> New booking</a></div>
+    <?php
+    $listCount = count($rows);
+    $listPaid = 0.0;
+    foreach ($rows as $lr) { if ($lr['payment_status'] === 'paid') $listPaid += (float)$lr['total']; }
+    ?>
+    <p class="tabular text-xs text-[#AB8868] mt-2"><?= $listCount ?> booking<?= $listCount === 1 ? '' : 's' ?><?= $status !== '' ? ' · ' . e($status) : '' ?><?= $q !== '' ? ' · “' . e($q) . '”' : '' ?> · $<?= money($listPaid) ?> paid in view</p>
+    <div class="card rounded-2xl p-4 mt-3">
+      <form method="get" class="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="action" value="list">
+        <input name="q" class="input rounded-full" style="max-width:220px" placeholder="Number or route…" value="<?= e($q) ?>" aria-label="Search">
+        <select name="status" class="input rounded-full" style="max-width:190px" aria-label="Status"><option value="">All statuses</option><?php foreach (BookingService::VALID_STATUSES as $s): ?><option <?= $status === $s ? 'selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?></select>
+        <button class="btn-gold rounded-full text-sm px-5">Filter</button>
+      </form>
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        <?php foreach (['' => 'All', 'awaiting_pricing' => 'Awaiting pricing', 'pending_payment' => 'Unpaid', 'confirmed' => 'Confirmed', 'assigned' => 'Dispatched', 'finish' => 'Finished', 'cancelled' => 'Cancelled'] as $sv => $sl): ?>
+        <a href="<?= url('admin/bookings.php?action=list' . ($sv !== '' ? '&status=' . $sv : '') . ($q !== '' ? '&q=' . urlencode($q) : '')) ?>" class="tabular text-[11px] px-3 py-1.5 rounded-full <?= $status === $sv ? 'bg-[#D9B978] text-[#0A0A0C] font-semibold' : 'border border-[#3a3a3d] text-[#AB8868] hover:text-[#F3D4A6]' ?>"><?= e($sl) ?></a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <div class="table-wrap card rounded-2xl mt-3"><table class="data"><thead><tr><th>Number</th><th>Date</th><th>Service</th><th>Status</th><th>Payment</th><th class="text-right">Total</th><th class="text-right">Actions</th></tr></thead><tbody>
+    <?php foreach ($rows as $r): ?><tr><td><a class="underline tabular font-semibold" href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>"><?= e($r['booking_number']) ?></a></td><td class="tabular"><?= e($r['pickup_date']) ?></td><td><?= e($r['service_type']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= status_pill($r['payment_status']) ?></td><td class="tabular text-right">$<?= money($r['total']) ?></td>
+    <td class="text-right whitespace-nowrap"><a href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>" class="btn-gold rounded-full text-xs font-semibold px-4 py-1.5 inline-block">View</a>
+    <?php if (in_array($r['status'], ['confirmed', 'assigned', 'booking_received'], true)): ?> <a href="<?= url('admin/dispatch.php') ?>" class="rounded-full text-xs font-semibold px-4 py-1.5 inline-block border border-[#C8A96B] text-[#F3D4A6] hover:bg-[#D9B978]/10">Dispatch</a><?php endif; ?></td></tr><?php endforeach; ?>
+    <?php if (!$rows): ?><tr><td colspan="7" class="text-xs">No bookings match. <a class="underline" href="<?= url('admin/bookings.php?action=create') ?>">Create one</a>.</td></tr><?php endif; ?>
     </tbody></table></div>
     <?php
 }

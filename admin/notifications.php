@@ -30,9 +30,9 @@ $rows = $pdo->query('SELECT * FROM notifications ORDER BY id DESC LIMIT 200')->f
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Notifications Log</h1>
+<div class="page-head"><div><p class="eyebrow">Content</p><h1 class="font-display text-3xl mt-1">Notifications Log</h1></div></div>
 <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>When</th><th>Template</th><th>To</th><th>Booking</th><th>Status</th><th>Error</th><th></th></tr></thead><tbody>
-<?php foreach ($rows as $r): ?><tr><td><?= e($r['created_at']) ?></td><td><?= e($r['template']) ?></td><td><?= e($r['email']) ?></td><td><?= e((string)($r['booking_id'] ?? '')) ?></td><td><?= e($r['status']) ?></td><td class="text-xs"><?= e((string)($r['error_message'] ?? '')) ?></td>
+<?php foreach ($rows as $r): ?><tr><td><?= e($r['created_at']) ?></td><td><?= e($r['template']) ?></td><td><?= e($r['email']) ?></td><td><?= e((string)($r['booking_id'] ?? '')) ?></td><td><?= status_pill($r['status']) ?></td><td class="text-xs"><?= e((string)($r['error_message'] ?? '')) ?></td>
 <td><?php if ($r['status'] === 'failed'): ?><form method="post"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><button class="btn-gold">Retry</button></form><?php endif; ?></td></tr><?php endforeach; ?>
 </tbody></table></div>
 <h2 class="font-display text-2xl mt-6">Newsletter subscribers</h2>

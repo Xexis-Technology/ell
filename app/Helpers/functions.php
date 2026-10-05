@@ -210,6 +210,35 @@ function money(float|int|string $v): string
     return number_format((float)$v, 2, '.', ',');
 }
 
+/** Status pill for admin tables. Never invents states — unknown values get neutral styling. */
+function status_pill(string $status): string
+{
+    static $green = ['paid','active','verified','succeeded','booking_received','confirmed','finish','sent'];
+    static $red = ['failed','inactive','suspended','rejected','cancelled','refunded','expired'];
+    static $gold = ['pending','processing','requested','assigned','approved','quoted','new','pricing_finalized','awaiting_pricing','partially_refunded','partially_paid','unpaid','maintenance'];
+    static $blue = ['on_the_way','arrived','at_pickup_location','on_board'];
+    if (in_array($status, $green, true)) $cls = 'pill-green';
+    elseif (in_array($status, $red, true)) $cls = 'pill-red';
+    elseif (in_array($status, $gold, true)) $cls = 'pill-gold';
+    elseif (in_array($status, $blue, true)) $cls = 'pill-blue';
+    else $cls = '';
+    return '<span class="pill ' . $cls . '">' . e($status) . '</span>';
+}
+
+/**
+ * Whole days from today until $date, or null when it was never recorded.
+ * Used by the fleet docket for insurance / registration / inspection /
+ * diamond-sticker / licence expiry, so a missing date reads as missing rather
+ * than as a fake value.
+ */
+function days_until(mixed $date): ?int
+{
+    if (!is_string($date) || trim($date) === '') return null;
+    $ts = strtotime(trim($date));
+    if ($ts === false) return null;
+    return (int)floor(($ts - strtotime('today')) / 86400);
+}
+
 /** Category-mapped stock photo for fleet vehicles. Returns [unsplash_id, alt]. */
 function vehicle_photo(?string $category): array
 {

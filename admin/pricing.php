@@ -50,7 +50,7 @@ $rules = $pdo->query('SELECT * FROM waiting_rules ORDER BY category')->fetchAll(
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Pricing</h1>
+<div class="page-head"><div><p class="eyebrow">Money</p><h1 class="font-display text-3xl mt-1">Pricing</h1></div></div>
 <div class="grid md:grid-cols-3 gap-4 mt-4">
 <form method="post" class="card p-4 space-y-2"><?= csrf_field() ?><input type="hidden" name="op" value="mode">
   <h3 class="label">Primary mode (exactly one)</h3>

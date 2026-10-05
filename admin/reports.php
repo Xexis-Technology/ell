@@ -19,7 +19,7 @@ $st->execute([$from, $to]);
 $byDriver = $st->fetchAll();
 ob_start();
 ?>
-<h1 class="font-display text-3xl">Reports (basic operational/financial)</h1>
+<div class="page-head"><div><p class="eyebrow">Content</p><h1 class="font-display text-3xl mt-1">Reports (basic operational/financial)</h1></div></div>
 <form method="get" class="flex gap-2 mt-3"><input type="date" name="from" class="input" style="max-width:180px" value="<?= e($from) ?>"><input type="date" name="to" class="input" style="max-width:180px" value="<?= e($to) ?>"><button class="btn-gold">Run</button></form>
 <div class="grid md:grid-cols-2 gap-4 mt-4">
 <div class="card p-5"><div class="label">Revenue (paid, <?= e($from) ?> → <?= e($to) ?>)</div><div class="font-display text-3xl">$<?= money($rev['t']) ?> (<?= (int)$rev['c'] ?> rides)</div></div>

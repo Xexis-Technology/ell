@@ -17,9 +17,9 @@ $rows = $pdo->query('SELECT * FROM group_event_inquiries ORDER BY id DESC LIMIT 
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Group &amp; Event Inquiries</h1>
+<div class="page-head"><div><p class="eyebrow">Content</p><h1 class="font-display text-3xl mt-1">Group &amp; Event Inquiries</h1></div></div>
 <div class="table-wrap card mt-3"><table class="data"><thead><tr><th>ID</th><th>Kind</th><th>Event</th><th>Contact</th><th>Status</th><th>Quote</th><th></th></tr></thead><tbody>
-<?php foreach ($rows as $r): ?><tr><td><?= (int)$r['id'] ?></td><td><?= e($r['kind']) ?></td><td><?= e($r['event_type']) ?> · <?= e((string)($r['event_dates'] ?? '')) ?> · <?= (int)($r['vehicle_count'] ?? 0) ?> veh · <?= (int)($r['estimated_passengers'] ?? 0) ?> pax<br><span class="text-xs"><?= e(mb_strimwidth((string)($r['locations'] ?? ''), 0, 80, '…')) ?></span></td><td><?= e($r['contact_name']) ?><br><?= e($r['contact_email']) ?></td><td><?= e($r['status']) ?></td><td><?= $r['quote_amount'] !== null ? '$' . money($r['quote_amount']) : '—' ?></td>
+<?php foreach ($rows as $r): ?><tr><td><?= (int)$r['id'] ?></td><td><?= e($r['kind']) ?></td><td><?= e($r['event_type']) ?> · <?= e((string)($r['event_dates'] ?? '')) ?> · <?= (int)($r['vehicle_count'] ?? 0) ?> veh · <?= (int)($r['estimated_passengers'] ?? 0) ?> pax<br><span class="text-xs"><?= e(mb_strimwidth((string)($r['locations'] ?? ''), 0, 80, '…')) ?></span></td><td><?= e($r['contact_name']) ?><br><?= e($r['contact_email']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= $r['quote_amount'] !== null ? '$' . money($r['quote_amount']) : '—' ?></td>
 <td><form method="post" class="space-y-1"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
 <select name="status" class="input"><?php foreach (['new','quoted','confirmed','declined','closed'] as $s): ?><option <?= $r['status'] === $s ? 'selected' : '' ?>><?= $s ?></option><?php endforeach; ?></select>
 <input name="quote_amount" type="number" step="0.01" class="input" placeholder="Quote $" value="<?= e((string)($r['quote_amount'] ?? '')) ?>">

@@ -241,6 +241,22 @@ final class Phase1Test extends TestCase
         $this->assertEquals(30.00, $c['charge']); // 2 intervals x $15
     }
 
+    public function testResetTokenLifecycle(): void
+    {
+        $pdo = self::$pdo;
+        $pdo->exec("INSERT INTO admins (name, email, password_hash, status) VALUES ('RT','resett@example.com','x','active') ON DUPLICATE KEY UPDATE name=VALUES(name)");
+        $aid = (int)$pdo->query("SELECT id FROM admins WHERE email='resett@example.com'")->fetch()['id'];
+        $raw = issue_reset_token($pdo, 'admin', $aid);
+        $this->assertNotEmpty($raw);
+        $row = consume_reset_token($pdo, 'admin', $raw);
+        $this->assertNotEmpty($row); // fresh token works regardless of DB timezone
+        $this->assertNull(consume_reset_token($pdo, 'admin', $raw)); // single-use
+        $this->assertNull(consume_reset_token($pdo, 'admin', 'bogus')); // unknown rejected
+        $raw2 = issue_reset_token($pdo, 'admin', $aid);
+        $pdo->exec("UPDATE password_resets SET expires_at = '2000-01-01 00:00:00' WHERE role='admin' AND used_at IS NULL");
+        $this->assertNull(consume_reset_token($pdo, 'admin', $raw2)); // expired rejected
+    }
+
     public function testBlogSlugAndVisibility(): void
     {
         $pdo = self::$pdo;

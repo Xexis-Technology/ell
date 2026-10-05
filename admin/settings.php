@@ -36,7 +36,7 @@ foreach ($keys as $k) $vals[$k] = (string)(setting($pdo, $k, ''));
 ob_start();
 ?>
 <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-<h1 class="font-display text-3xl">Settings</h1>
+<div class="page-head"><div><p class="eyebrow">System</p><h1 class="font-display text-3xl mt-1">Settings</h1></div></div>
 <form method="post" enctype="multipart/form-data" class="card p-4 mt-3 space-y-4"><?= csrf_field() ?>
   <h3 class="label">General / SEO / Organization</h3>
   <div class="grid md:grid-cols-2 gap-3">

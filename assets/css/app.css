@@ -51,7 +51,7 @@ table.data td{padding:.65rem;border-bottom:1px solid #262628}
 .marquee:hover .marquee-track{animation-play-state:paused}
 @keyframes ell-marquee{to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion: reduce){.marquee-track{animation:none}html{scroll-behavior:auto}}
-a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold-mute);outline-offset:2px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--gold-mute);outline-offset:2px}
 .no-focus-ring,.no-focus-ring:focus,.no-focus-ring:focus-visible,.no-focus-ring:active{outline:none !important;box-shadow:none !important;-webkit-tap-highlight-color:transparent}
 /* Hero booking card: no focus/hover boxes on any field (owner request) */
 #heroBooking input,#heroBooking select,#heroBooking textarea{-webkit-tap-highlight-color:transparent}
