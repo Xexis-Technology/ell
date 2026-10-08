@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/Helpers/functions.php';
+require_once __DIR__ . '/Helpers/seo.php';
+require_once __DIR__ . '/Helpers/auditlog.php';
 
 load_env(dirname(__DIR__) . '/.env');
 
@@ -42,6 +44,7 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require_once __DIR__ . '/Core/Database.php';
+require_once __DIR__ . '/Integrations.php';
 require_once __DIR__ . '/Middleware/Auth.php';
 require_once __DIR__ . '/Middleware/Security.php';
 require_once __DIR__ . '/Services/NotificationService.php';

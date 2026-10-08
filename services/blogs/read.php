@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../../app/bootstrap.php';
+require_once __DIR__ . '/../../app/richtext.php';
 $pdo = Database::pdo();
 $slug = slugify(trim((string)($_GET['slug'] ?? '')));
 $st = $pdo->prepare("SELECT * FROM blog_posts WHERE slug = ? AND status = 'published' LIMIT 1");
@@ -24,12 +25,12 @@ ob_start();
       <p class="eyebrow">Journal</p>
       <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] mt-2"><?= e($post['title']) ?></h1>
       <p class="tabular text-xs tracking-widest text-[#AB8868] mt-3"><?= e(date('F j, Y', strtotime($post['published_at'] ?? $post['created_at']))) ?> · EXOTIC LANE LIMO</p>
-      <?php if (!empty($post['cover'])): ?>
-      <div class="rounded-2xl overflow-hidden mt-6 bg-gradient-to-br from-[#181819] to-[#AB8868]">
-        <img src="https://images.unsplash.com/<?= e($post['cover']) ?>?auto=format&fit=crop&w=1200&q=60" alt="<?= e($post['title']) ?>" class="w-full h-64 md:h-96 object-cover" onerror="this.style.display='none'">
+<?php $postCover = cover_url($post['cover'], 1200); if ($postCover !== ''): ?>
+  <div class="rounded-2xl overflow-hidden mt-6 bg-gradient-to-br from-[#181819] to-[#AB8868]">
+   <img src="<?= e($postCover) ?>" alt="<?= e($post['title']) ?>" class="w-full h-64 md:h-96 object-cover" width="1200" height="384" fetchpriority="high" decoding="async" onerror="this.style.display='none'">
       </div>
       <?php endif; ?>
-      <div class="mt-6 text-[15px] leading-relaxed text-[#E5E5E3] space-y-4 blog-body"><?= $post['body'] ?></div>
+      <div class="mt-6 text-[15px] leading-relaxed text-[#E5E5E3] space-y-4 blog-body"><?= render_rich_text($post['body']) ?></div>
       <div class="mt-8">
         <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full text-sm px-8 py-3">Book your ride</a>
       </div>
@@ -40,9 +41,9 @@ ob_start();
       <div class="mt-3 space-y-3">
         <?php foreach ($related as $r): ?>
         <a href="<?= url('services/blogs/read.php?slug=' . urlencode($r['slug'])) ?>" class="group flex items-center gap-3 rounded-2xl border border-[#2a2a2b] hover:border-[#C8A96B] p-3">
-          <?php if (!empty($r['cover'])): ?>
-          <span class="w-20 h-16 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0A0A0C] to-[#AB8868]">
-            <img src="https://images.unsplash.com/<?= e($r['cover']) ?>?auto=format&fit=crop&w=400&q=60" alt="<?= e($r['title']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'">
+<?php $relCover = cover_url($r['cover'], 400); if ($relCover !== ''): ?>
+    <span class="w-20 h-16 shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0A0A0C] to-[#AB8868]">
+      <img src="<?= e($relCover) ?>" alt="<?= e($r['title']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" width="400" height="320" onerror="this.style.display='none'">
           </span>
           <?php endif; ?>
           <span class="font-display text-base text-[#F3D4A6]"><?= e($r['title']) ?></span>
@@ -57,5 +58,12 @@ ob_start();
 $content = ob_get_clean();
 $pageTitle = ($post['meta_title'] ?: $post['title'] . ' | Exotic Lane Limo');
 $metaDesc = $post['meta_description'] ?: ($post['excerpt'] ?? '');
+// Per-post keywords win; otherwise the site-wide list from Settings.
+$metaKeywords = trim((string)($post['meta_keywords'] ?? ''));
 $headerVariant = 'index';
+// The post is already on the page, so it is worth marking up as an article
+// with its real publication date rather than leaving it as plain page text.
+$schemaNodes = array_values(array_filter([
+    seo_article_node($post, SITE_URL . '/services/blogs/read.php?slug=' . rawurlencode((string)$post['slug'])),
+]));
 require APP_ROOT . '/views/layouts/public.php';

@@ -120,7 +120,6 @@ ob_start();
             </div>
             <input type="hidden" name="direction" :value="dir" x-show="tab === 'airport'">
             <input type="hidden" name="hours" :value="hours" x-show="tab === 'hourly'">
-            <input type="hidden" name="passengers" :value="pax">
 
             <p class="font-semibold text-[#F9F9F9] text-sm">Where to?</p>
 
@@ -308,7 +307,7 @@ ob_start();
       <!-- Photo -->
       <div class="relative min-h-[300px] lg:min-h-full">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#181819] to-[#AB8868]"></div>
-        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=60" alt="Black luxury sedan at night" class="absolute inset-0 w-full h-full object-cover rounded-2xl" loading="lazy" onerror="this.style.display='none'">
+        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=60" alt="Black luxury sedan at night" class="absolute inset-0 w-full h-full object-cover rounded-2xl" loading="lazy" decoding="async" onerror="this.style.display='none'">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#0A0A0C]/70 via-transparent to-transparent"></div>
         <div class="absolute bottom-4 right-4">
           <a href="#fleet" class="text-[11px] tracking-widest text-[#F3D4A6] underline">SEE FLEET</a>
@@ -575,7 +574,7 @@ function tripSlip() {
       <div class="relative rounded-2xl overflow-hidden bg-[#181819] border border-[#2a2a2b] min-h-[380px] lg:min-h-[480px]">
         <template x-if="j === 'p2p'">
           <div>
-            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=60" alt="Luxury car on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=60" alt="Luxury car on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <h3 class="font-display text-2xl md:text-3xl text-white">Across town, your way</h3>
@@ -586,7 +585,7 @@ function tripSlip() {
         </template>
         <template x-if="j === 'airport'">
           <div>
-            <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=60" alt="Airplane wing at sunset" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=60" alt="Airplane wing at sunset" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <h3 class="font-display text-2xl md:text-3xl text-white">Never wait for a ride again</h3>
@@ -597,7 +596,7 @@ function tripSlip() {
         </template>
         <template x-if="j === 'hourly'">
           <div>
-            <img src="https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=1200&q=60" alt="City streets at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=1200&q=60" alt="City streets at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <h3 class="font-display text-2xl md:text-3xl text-white">The night is yours</h3>
@@ -608,7 +607,7 @@ function tripSlip() {
         </template>
         <template x-if="j === 'groups'">
           <div>
-            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=60" alt="Chauffeur driving at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=60" alt="Chauffeur driving at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <h3 class="font-display text-2xl md:text-3xl text-white">Bring everyone</h3>
@@ -631,7 +630,7 @@ function tripSlip() {
     <!-- Photo with floating cards -->
     <div class="relative">
       <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[320px] md:h-[420px] object-cover" loading="lazy" onerror="this.style.display='none'">
+        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[320px] md:h-[420px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
       </div>
       <span class="absolute top-6 -right-2 sm:right-6 bg-[#D9B978] text-[#0A0A0C] text-xs font-semibold px-4 py-2 rounded-full">Fixed pricing</span>
       <div class="absolute -bottom-6 left-4 right-4 sm:left-8 sm:right-auto sm:w-72 bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 shadow-2xl">
@@ -695,7 +694,7 @@ function tripSlip() {
     ?>
     <article class="card rounded-2xl overflow-hidden group flex flex-col">
       <div class="h-48 bg-gradient-to-br from-[#0A0A0C] to-[#AB8868] overflow-hidden">
-        <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'">
+        <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" onerror="this.style.display='none'">
       </div>
       <div class="p-5 flex flex-col flex-1">
         <p class="flight-code"><?= e(strtoupper($v['category'] ?? 'VEHICLE')) ?></p>

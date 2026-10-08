@@ -79,22 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-    } elseif ($op === 'doc' && isset($_FILES['doc'])) {
-        [$path, $err] = secure_upload($_FILES['doc'], 'drivers');
-        if ($err) {
-            $msg = $err;
-            $isErr = true;
-        } else {
-            $pdo->prepare('INSERT INTO driver_documents (driver_id, doc_type, file_path, expiry_date, status) VALUES (?,?,?,?,"pending")')
-                ->execute([$id, trim((string)($_POST['doc_type'] ?? 'document')) ?: 'document', $path, $_POST['expiry_date'] ?: null]);
-            audit($pdo, 'admin', (int)$admin['id'], 'driver.doc_uploaded', 'driver', $id, null);
-            $msg = 'Document uploaded. It is pending review.';
-        }
-    } elseif ($op === 'verify_doc') {
-        $pdo->prepare('UPDATE driver_documents SET status = ? WHERE id = ?')
-            ->execute([in_array($_POST['doc_status'] ?? '', ['verified', 'rejected', 'expired'], true) ? $_POST['doc_status'] : 'pending', (int)$_POST['doc_id']]);
-        audit($pdo, 'admin', (int)$admin['id'], 'driver.doc_reviewed', 'driver_document', (int)$_POST['doc_id'], null);
-        $msg = 'Document marked ' . $pdo->query('SELECT status FROM driver_documents WHERE id = ' . (int)$_POST['doc_id'])->fetchColumn() . '.';
     }
     header('Location: ' . url($back . '?' . http_build_query(array_filter(['id' => $id ?: null, 'view' => $view, 'msg' => $msg] + ($isErr ? ['err' => 1] : [])))));
     exit;
@@ -111,9 +95,8 @@ $st = $pdo->query('SELECT d.*,
     FROM drivers d ORDER BY d.name');
 $drivers = $st->fetchAll();
 
-$ddocsBy = [];
-foreach ($pdo->query('SELECT * FROM driver_documents ORDER BY id DESC') as $d) $ddocsBy[(int)$d['driver_id']][] = $d;
-
+// driver_documents is deliberately not read: paperwork for a chauffeur is the
+// licence date on this record, so the certificates table adds nothing.
 
 $fmtDays = static function (?int $n): string {
     if ($n === null) return 'not recorded';
@@ -130,12 +113,6 @@ $sev = static function (?int $n): array {
     if ($n <= 90) return ['is-warn', $pct];
     return ['', $pct];
 };
-$docSev = static function (?int $n): array {
-    if ($n === null) return ['is-none', 0];
-    $pct = $n < 0 ? 3 : max(3, min(100, (int)round($n / 365 * 100)));
-    return $n < 0 ? ['is-bad', $pct] : ($n <= 30 ? ['is-warn', $pct] : ['', $pct]);
-};
-
 $ready = 0;
 $pending = 0;
 $expiring = 0;
@@ -145,13 +122,9 @@ $risky = [];
 // back from $drivers afterwards, and this leaves no dangling reference behind.
 foreach ($drivers as $i => $row) {
     $lic = days_until($row['license_expiry'] ?? null);
-    $unverified = 0;
-    foreach ($ddocsBy[(int)$row['id']] ?? [] as $doc) if ($doc['status'] !== 'verified') $unverified++;
 
     $drivers[$i]['_lic'] = $lic;
     $drivers[$i]['_lapsed'] = $lic !== null && $lic < 0;
-    $drivers[$i]['_unverified'] = $unverified;
-    $drivers[$i]['_docCount'] = count($ddocsBy[(int)$row['id']] ?? []);
 
     if ($row['status'] === 'active' && !($lic !== null && $lic < 0)) $ready++;
     if ($row['status'] === 'pending') $pending++;
@@ -227,7 +200,7 @@ ob_start();
     $did = (int)$d['id'];
     $ini = '';
     foreach (preg_split('/\s+/', trim((string)$d['name'])) ?: [] as $w) if ($w !== '') $ini .= mb_strtoupper(mb_substr($w, 0, 1));
-    $edge = $d['_lapsed'] ? ' t-lapsed' : (($d['_lic'] !== null && $d['_lic'] <= 45) || $d['_unverified'] > 0 ? ' t-warn' : '');
+    $edge = $d['_lapsed'] ? ' t-lapsed' : (($d['_lic'] !== null && $d['_lic'] <= 45) ? ' t-warn' : '');
 ?>
   <li>
     <button type="button" class="tile<?= $edge ?>" data-open-modal="dlg-drv-<?= $did ?>" aria-label="Open <?= e($d['name']) ?>">
@@ -244,17 +217,9 @@ ob_start();
 
 <?php foreach ($shown as $d):
     $did = (int)$d['id'];
-    $slips = $ddocsBy[$did] ?? [];
     $ini = '';
     foreach (preg_split('/\s+/', trim((string)$d['name'])) ?: [] as $w) if ($w !== '') $ini .= mb_strtoupper(mb_substr($w, 0, 1));
     [$lcls, $lpct] = $sev($d['_lic']);
-    $worstDoc = null;
-    foreach ($slips as $sl) {
-        $n = days_until($sl['expiry_date'] ?? null);
-        if ($n === null) continue;
-        if ($worstDoc === null || $n < $worstDoc) $worstDoc = $n;
-    }
-    [$dcls, $dpct] = $worstDoc === null ? ['is-none', 0] : $docSev($worstDoc);
 ?>
 <dialog class="modal is-wide" id="dlg-drv-<?= $did ?>" aria-labelledby="dlg-drv-t-<?= $did ?>">
   <div class="md-head">
@@ -287,19 +252,15 @@ ob_start();
             <span class="fl-doc-bar"><i class="fl-doc-fill" style="width:<?= $lpct ?>%"></i></span>
             <span class="fl-doc-d"><?= $d['_lic'] === null ? 'missing' : e($fmtDays($d['_lic'])) ?></span>
           </div>
-          <div class="fl-doc <?= $dcls ?>">
-            <span class="fl-doc-k">Oldest doc</span>
-            <span class="fl-doc-bar"><i class="fl-doc-fill" style="width:<?= $dpct ?>%"></i></span>
-            <span class="fl-doc-d"><?= $worstDoc === null ? ($slips ? 'no dates' : 'none') : e($fmtDays($worstDoc)) ?></span>
-          </div>
+          
         </div>
       </div>
 
       <div class="det-block">
         <span class="det-h">Record</span>
         <div class="fl-row2">
-          <div><label class="bk-k" for="dn<?= $did ?>">Name</label><input id="dn<?= $did ?>" name="name" class="input" required value="<?= e($d['name']) ?>"></div>
-          <div><label class="bk-k" for="dp<?= $did ?>">Phone</label><input id="dp<?= $did ?>" name="phone" class="input" value="<?= e((string)$d['phone']) ?>"></div>
+          <div><label class="bk-k" for="dn<?= $did ?>">Name</label><input id="dn<?= $did ?>" name="name" class="input" required placeholder="Marisol Reyes" value="<?= e($d['name']) ?>"></div>
+          <div><label class="bk-k" for="dp<?= $did ?>">Phone</label><input id="dp<?= $did ?>" name="phone" class="input" placeholder="718-555-0142" value="<?= e((string)$d['phone']) ?>"></div>
         </div>
         <div><label class="bk-k" for="de<?= $did ?>">Email</label><input id="de<?= $did ?>" class="input" value="<?= e($d['email']) ?>" disabled><span class="det-empty">This is the address they sign in with, so it is not changed here.</span></div>
         <div class="fl-row2">
@@ -307,7 +268,7 @@ ob_start();
           <div><label class="bk-k" for="dl<?= $did ?>">Licence number</label><input id="dl<?= $did ?>" name="license_number" class="input" value="<?= e((string)$d['license_number']) ?>" placeholder="NY-CD-88213"></div>
         </div>
         <div class="fl-row2">
-          <div><label class="bk-k" for="dle<?= $did ?>">Licence expires</label><input id="dle<?= $did ?>" name="license_expiry" type="date" class="input" value="<?= e((string)($d['license_expiry'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="dle<?= $did ?>">Licence expires</label><input id="dle<?= $did ?>" name="license_expiry" type="date" class="input" placeholder="mm/dd/yyyy" value="<?= e((string)($d['license_expiry'] ?? '')) ?>"></div>
           <div><label class="bk-k" for="dq<?= $did ?>">Payout reference</label><input id="dq<?= $did ?>" name="payout_reference" class="input" value="<?= e((string)$d['payout_reference']) ?>" placeholder="Chase account and last four digits"></div>
         </div>
         <p class="det-empty">A payout reference is a handle and last four digits only. Never a full card or account number.</p>
@@ -322,44 +283,7 @@ ob_start();
       </div>
     </form>
 
-    <div class="det-block">
-      <span class="det-h">Documents</span>
-      <?php if ($slips): ?>
-        <div class="table-wrap"><table class="fl-table">
-          <thead><tr><th>Document</th><th>Expires</th><th>Status</th><th>File</th><th>Review</th></tr></thead>
-          <tbody>
-          <?php foreach ($slips as $sl): ?>
-            <tr>
-              <td><?= e($sl['doc_type']) ?></td>
-              <td class="tabular"><?= $sl['expiry_date'] ? e(date('j M Y', strtotime((string)$sl['expiry_date']))) : '&mdash;' ?></td>
-              <td><?= status_pill((string)$sl['status']) ?></td>
-              <td><a href="<?= url($sl['file_path']) ?>">open</a></td>
-              <td>
-                <form method="post" class="fl-row2" style="gap:.3rem"><?= csrf_field() ?><input type="hidden" name="op" value="verify_doc"><input type="hidden" name="doc_id" value="<?= (int)$sl['id'] ?>"><input type="hidden" name="id" value="<?= $did ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
-                  <select name="doc_status" class="input" style="padding:.35rem .5rem;font-size:.78rem" aria-label="Review <?= e($sl['doc_type']) ?>">
-                    <?php foreach (['verified' => 'Verified', 'pending' => 'Pending', 'rejected' => 'Rejected', 'expired' => 'Expired'] as $sk => $sl2): ?><option value="<?= $sk ?>" <?= $sl['status'] === $sk ? 'selected' : '' ?>><?= e($sl2) ?></option><?php endforeach; ?>
-                  </select>
-                  <button class="fl-btn">Save</button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-          </tbody>
-        </table></div>
-      <?php else: ?>
-        <p class="det-empty">No documents on file.</p>
-      <?php endif; ?>
-      <form method="post" enctype="multipart/form-data" class="fl-form">
-        <?= csrf_field() ?><input type="hidden" name="op" value="doc"><input type="hidden" name="id" value="<?= $did ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
-        <div class="fl-row2">
-          <div><label class="bk-k" for="ddt<?= $did ?>">Document</label><input id="ddt<?= $did ?>" name="doc_type" class="input" value="licence" placeholder="licence / medical / background"></div>
-          <div><label class="bk-k" for="ddx<?= $did ?>">Expires</label><input id="ddx<?= $did ?>" name="expiry_date" type="date" class="input"></div>
-        </div>
-        <div><label class="bk-k" for="ddf<?= $did ?>">File</label><input id="ddf<?= $did ?>" type="file" name="doc" class="input" accept=".jpg,.jpeg,.png,.pdf"></div>
-        <div><button class="fl-btn fl-btn-go">Upload document</button></div>
-      </form>
-    </div>
-  </div>
+</div>
 
   <div class="md-foot">
     <form method="post" class="det-acts">
@@ -368,7 +292,7 @@ ob_start();
         <button type="submit" class="fl-btn <?= e($cls) ?>"><?= e($label) ?></button>
       <?php endforeach; ?>
     </form>
-    <span class="md-foot-note">Currently <?= e($d['status']) ?>. <?= $d['_unverified'] > 0 ? $d['_unverified'] . ' document' . ($d['_unverified'] === 1 ? '' : 's') . ' still to review.' : 'All documents verified.' ?></span>
+    <span class="md-foot-note">Currently <?= e($d['status']) ?>.</span>
   </div>
 </dialog>
 <?php endforeach; ?>
@@ -394,7 +318,7 @@ ob_start();
       </div>
       <div class="fl-row2">
         <div><label class="bk-k" for="al">Licence number</label><input id="al" name="license_number" class="input" placeholder="NY-CD-88213"></div>
-        <div><label class="bk-k" for="ale">Licence expires</label><input id="ale" name="license_expiry" type="date" class="input"></div>
+        <div><label class="bk-k" for="ale">Licence expires</label><input id="ale" name="license_expiry" type="date" class="input" placeholder="mm/dd/yyyy"></div>
       </div>
       <div><label class="bk-k" for="aq">Payout reference</label><input id="aq" name="payout_reference" class="input" placeholder="Chase account and last four"></div>
       <div class="det-block">

@@ -12,7 +12,7 @@ if ($param === '') {
     <div class="max-w-7xl mx-auto px-4 py-10 md:py-14">
       <p class="eyebrow">The roster</p>
       <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] mt-2">Every car in the fleet</h1>
-      <p class="text-sm text-[#AB8868] mt-2"><?= count($vehicles) ?> vehicle<?= count($vehicles) === 1 ? '' : 's' ?> ready for dispatch — tap any car for full details.</p>
+      <p class="text-sm text-[#AB8868] mt-2"><?= count($vehicles) ?> vehicle<?= count($vehicles) === 1 ? '' : 's' ?> ready for dispatch ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â tap any car for full details.</p>
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8">
         <?php foreach ($vehicles as $v):
           [$photoId, $photoAlt] = vehicle_photo($v['category'] ?? null);
@@ -20,15 +20,15 @@ if ($param === '') {
         ?>
         <article class="card rounded-2xl overflow-hidden group flex flex-col">
           <div class="h-48 bg-gradient-to-br from-[#0A0A0C] to-[#AB8868] overflow-hidden">
-            <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'" decoding="async">
           </div>
           <div class="p-5 flex flex-col flex-1">
             <p class="flight-code"><?= e(strtoupper($v['category'] ?? 'VEHICLE')) ?></p>
             <h2 class="font-display text-xl text-[#F3D4A6] mt-1"><?= e($v['make'] . ' ' . $v['model']) ?></h2>
-            <p class="tabular text-xs text-[#AB8868] mt-1"><?= e((string)$v['year']) ?> · UP TO <?= (int)$v['passenger_capacity'] ?> SEATS · <?= (int)$v['luggage_capacity'] ?> BAGS</p>
+            <p class="tabular text-xs text-[#AB8868] mt-1"><?= e((string)$v['year']) ?> Ãƒâ€šÃ‚Â· UP TO <?= (int)$v['passenger_capacity'] ?> SEATS Ãƒâ€šÃ‚Â· <?= (int)$v['luggage_capacity'] ?> BAGS</p>
             <p class="tabular text-xs font-semibold text-[#F3D4A6] mt-2">
               <?php if ($v['per_mile_rate'] !== null): ?>$<?= money($v['per_mile_rate']) ?>/mi<?php endif; ?>
-              <?php if ($v['per_mile_rate'] !== null && $v['hourly_rate'] !== null): ?> · <?php endif; ?>
+              <?php if ($v['per_mile_rate'] !== null && $v['hourly_rate'] !== null): ?> Ãƒâ€šÃ‚Â· <?php endif; ?>
               <?php if ($v['hourly_rate'] !== null): ?>$<?= money($v['hourly_rate']) ?>/hr<?php endif; ?>
             </p>
             <div class="grid grid-cols-2 gap-2 mt-4">
@@ -38,13 +38,13 @@ if ($param === '') {
           </div>
         </article>
         <?php endforeach; ?>
-        <?php if (!$vehicles): ?><p class="text-sm text-[#AB8868]">Fleet details coming soon — <a class="underline" href="<?= url('services/booking.php') ?>">book anyway</a>.</p><?php endif; ?>
+        <?php if (!$vehicles): ?><p class="text-sm text-[#AB8868]">Fleet details coming soon ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â <a class="underline" href="<?= url('services/booking.php') ?>">book anyway</a>.</p><?php endif; ?>
       </div>
     </div>
     <?php
     $content = ob_get_clean();
     $pageTitle = 'Fleet | Exotic Lane Limo';
-    $metaDesc = 'Every vehicle in the Exotic Lane Limo fleet — photos, seating, luggage and live rates.';
+    $metaDesc = 'Every vehicle in the Exotic Lane Limo fleet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â photos, seating, luggage and live rates.';
     $headerVariant = 'index';
     require APP_ROOT . '/views/layouts/public.php';
     exit;
@@ -74,7 +74,7 @@ ob_start();
   <p class="eyebrow mt-4">Vehicle details</p>
   <div class="grid md:grid-cols-2 gap-8 mt-2 items-start">
     <div class="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-      <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=1000&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-72 md:h-96 object-cover" onerror="this.style.display='none'">
+      <img src="https://images.unsplash.com/<?= $photoId ?>?auto=format&fit=crop&w=1000&q=60" alt="<?= e($photoAlt) ?>" class="w-full h-72 md:h-96 object-cover" onerror="this.style.display='none'" decoding="async">
       <span class="absolute bottom-4 left-4 tabular text-[11px] tracking-widest text-[#0A0A0C] bg-[#D9B978] rounded-full px-3 py-1.5">
         <?php if ($v['per_mile_rate'] !== null): ?>FROM $<?= money($v['per_mile_rate']) ?>/MI<?php elseif ($v['hourly_rate'] !== null): ?>FROM $<?= money($v['hourly_rate']) ?>/HR<?php else: ?>RATE ON REQUEST<?php endif; ?>
       </span>
@@ -108,15 +108,15 @@ ob_start();
     ?>
     <article class="card rounded-2xl overflow-hidden group flex flex-col">
       <div class="h-48 bg-gradient-to-br from-[#0A0A0C] to-[#AB8868] overflow-hidden">
-        <img src="https://images.unsplash.com/<?= $opId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($opAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'">
+        <img src="https://images.unsplash.com/<?= $opId ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($opAlt) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'" decoding="async">
       </div>
       <div class="p-5 flex flex-col flex-1">
         <p class="flight-code"><?= e(strtoupper($o['category'] ?? 'VEHICLE')) ?></p>
         <h3 class="font-display text-xl text-[#F3D4A6] mt-1"><?= e($o['make'] . ' ' . $o['model']) ?></h3>
-        <p class="tabular text-xs text-[#AB8868] mt-1"><?= e((string)$o['year']) ?> · UP TO <?= (int)$o['passenger_capacity'] ?> SEATS · <?= (int)$o['luggage_capacity'] ?> BAGS</p>
+        <p class="tabular text-xs text-[#AB8868] mt-1"><?= e((string)$o['year']) ?> Ãƒâ€šÃ‚Â· UP TO <?= (int)$o['passenger_capacity'] ?> SEATS Ãƒâ€šÃ‚Â· <?= (int)$o['luggage_capacity'] ?> BAGS</p>
         <p class="tabular text-xs font-semibold text-[#F3D4A6] mt-2">
           <?php if ($o['per_mile_rate'] !== null): ?>$<?= money($o['per_mile_rate']) ?>/mi<?php endif; ?>
-          <?php if ($o['per_mile_rate'] !== null && $o['hourly_rate'] !== null): ?> · <?php endif; ?>
+          <?php if ($o['per_mile_rate'] !== null && $o['hourly_rate'] !== null): ?> Ãƒâ€šÃ‚Â· <?php endif; ?>
           <?php if ($o['hourly_rate'] !== null): ?>$<?= money($o['hourly_rate']) ?>/hr<?php endif; ?>
         </p>
         <div class="grid grid-cols-2 gap-2 mt-4">

@@ -22,7 +22,7 @@ ob_start();
   <div class="card rounded-2xl overflow-hidden grid md:grid-cols-2">
     <div class="relative min-h-[220px] md:min-h-full">
       <div class="absolute inset-0 bg-gradient-to-br from-[#181819] to-[#AB8868]"></div>
-      <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=60" alt="Luxury car on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+      <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=60" alt="Luxury car on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C]/90 via-[#0A0A0C]/30 to-transparent"></div>
       <div class="absolute bottom-0 p-6">
         <p class="eyebrow">Members' entrance</p>

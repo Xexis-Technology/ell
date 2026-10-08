@@ -53,7 +53,7 @@ ob_start();
   </div>
   <div class="relative">
     <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-      <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[300px] md:h-[400px] object-cover" loading="lazy" onerror="this.style.display='none'">
+      <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[300px] md:h-[400px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     </div>
     <div class="absolute -bottom-5 left-4 right-4 sm:left-6 sm:right-auto sm:w-72 bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 shadow-2xl">
       <p class="tabular text-[10px] tracking-widest text-[#AB8868]">EVERY RIDE INCLUDES</p>
@@ -104,7 +104,7 @@ ob_start();
 <section class="max-w-7xl mx-auto px-4 py-10 md:py-14 hairline-t">
   <div class="grid lg:grid-cols-2 gap-10 items-start">
     <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-      <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1000&q=60" alt="Chauffeur driving at night" class="w-full h-[280px] md:h-[360px] object-cover" loading="lazy" onerror="this.style.display='none'">
+      <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1000&q=60" alt="Chauffeur driving at night" class="w-full h-[280px] md:h-[360px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     </div>
     <div>
       <p class="eyebrow">Why choose us</p>

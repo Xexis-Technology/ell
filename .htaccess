@@ -5,6 +5,12 @@
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
+
+    # Crawler files are generated from the database and from SITE_URL, because
+    # the hand-maintained copies named a different domain and had drifted.
+    # The .xml and .txt extensions are kept so crawls keep the shape they expect.
+    RewriteRule ^robots\.txt$ robots.php [L]
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
 </IfModule>
 
 # Protect sensitive files/dirs

@@ -50,8 +50,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $head = [$fields['category_id'], $make, $model];
             $tail = [$fields['year'], $fields['plate'], $fields['passenger_capacity'], $fields['luggage_capacity'], $fields['status'], $fields['description'], $fields['insurance_expiry'], $fields['registration_expiry'], $fields['inspection_expiry'], $fields['diamond_sticker_expiry']];
             if ($id) {
-                $cur = $pdo->query('SELECT slug FROM vehicles WHERE id = ' . $id)->fetch();
-                $slug = ($cur && $cur['slug']) ? $cur['slug'] : unique_vehicle_slug($pdo, $make . ' ' . $model, $id);
+$cur = $pdo->query('SELECT slug FROM vehicles WHERE id = ' . $id)->fetch();
+        // Admin can set the slug; blank keeps whatever is already on file, and
+        // if that is empty too we generate one from make + model.
+        $want = strtolower(trim((string)($_POST['slug'] ?? '')));
+        $want = preg_replace('/[^a-z0-9]+/', '-', $want) ?? '';
+        $want = trim($want, '-');
+        if ($want === '') $want = ($cur && $cur['slug']) ? (string)$cur['slug'] : '';
+        $slug = $want === '' ? unique_vehicle_slug($pdo, $make . ' ' . $model, $id) : unique_vehicle_slug($pdo, $want, $id);
                 $pdo->prepare('UPDATE vehicles SET ' . $setList . ' WHERE id=?')->execute(array_merge($head, [$slug], $tail, [$id]));
                 audit($pdo, 'admin', (int)$admin['id'], 'vehicle.updated', 'vehicle', $id, null);
                 $msg = $make . ' ' . $model . ' saved.';
@@ -112,25 +118,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         audit($pdo, 'admin', (int)$admin['id'], 'vehicle.unblocked', 'vehicle', (int)($_POST['vehicle_id'] ?? 0), null);
         $msg = 'Block lifted. The car is bookable again.';
         $returnTo = (int)($_POST['vehicle_id'] ?? 0);
-    } elseif ($op === 'doc' && isset($_FILES['doc'])) {
-        $vid = (int)($_POST['vehicle_id'] ?? 0);
-        [$path, $err] = secure_upload($_FILES['doc'], 'vehicles');
-        if ($err) {
-            $msg = $err;
-            $isErr = true;
-        } else {
-            $pdo->prepare('INSERT INTO vehicle_documents (vehicle_id, doc_type, file_path, expiry_date, status) VALUES (?,?,?,?,"pending")')
-                ->execute([$vid, trim((string)($_POST['doc_type'] ?? 'document')) ?: 'document', $path, $_POST['expiry_date'] ?: null]);
-            audit($pdo, 'admin', (int)$admin['id'], 'vehicle.doc_uploaded', 'vehicle', $vid, null);
-            $msg = 'Document uploaded. It is pending review.';
-            $returnTo = $vid;
-        }
-    } elseif ($op === 'verify_doc') {
-        $pdo->prepare('UPDATE vehicle_documents SET status = ? WHERE id = ?')
-            ->execute([in_array($_POST['doc_status'] ?? '', ['verified', 'rejected', 'expired'], true) ? $_POST['doc_status'] : 'pending', (int)$_POST['doc_id']]);
-        audit($pdo, 'admin', (int)$admin['id'], 'vehicle.doc_reviewed', 'vehicle_document', (int)$_POST['doc_id'], null);
-        $msg = 'Document reviewed.';
-        $returnTo = (int)($_POST['vehicle_id'] ?? 0);
     }
     header('Location: ' . url($back . '?' . http_build_query(array_filter(['id' => $returnTo ?: null, 'view' => $view, 'msg' => $msg] + ($isErr ? ['err' => 1] : [])))));
     exit;
@@ -149,8 +136,8 @@ $st = $pdo->query('SELECT v.*, c.name AS category, pr.per_mile_rate, pr.hourly_r
 $vehicles = $st->fetchAll();
 $cats = $pdo->query('SELECT * FROM vehicle_categories ORDER BY name')->fetchAll();
 
-$vdocsBy = [];
-foreach ($pdo->query('SELECT * FROM vehicle_documents ORDER BY id DESC') as $d) $vdocsBy[(int)$d['vehicle_id']][] = $d;
+// vehicle_documents is deliberately not read: the four dates on the record are
+// the whole paperwork story for a car, so the certificates table adds nothing.
 $blocksBy = [];
 foreach ($pdo->query('SELECT * FROM vehicle_blocks ORDER BY starts_at') as $b) $blocksBy[(int)$b['vehicle_id']][] = $b;
 
@@ -299,7 +286,7 @@ ob_start();
 ?>
   <li>
 <button type="button" class="tile<?= $edge ?>" data-open-modal="dlg-car-<?= $vid ?>" aria-label="Open <?= e($v['make'] . ' ' . $v['model']) ?>">
-  <img class="tile-img" src="<?= e(vehicle_photo_url((string)($v['category'] ?? ''), 400)) ?>" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+  <img class="tile-img" src="<?= e(vehicle_photo_url((string)($v['category'] ?? ''), 400)) ?>" alt="" loading="lazy" onerror="this.style.visibility='hidden'" decoding="async">
   <span class="tile-text">
   <span class="tile-name"><?= e($v['make'] . ' ' . $v['model']) ?></span>
   <span class="tile-rates"><span><b>$<?= money($v['per_mile_rate'] ?? 0) ?></b>/mi</span><span><b>$<?= money($v['hourly_rate'] ?? 0) ?></b>/hr</span></span>
@@ -312,7 +299,6 @@ ob_start();
 
 <?php foreach ($shown as $v):
     $vid = (int)$v['id'];
-    $slips = $vdocsBy[$vid] ?? [];
     $vblocks = $blocksBy[$vid] ?? [];
     $st2 = $pdo->prepare('SELECT COUNT(*) c, COALESCE(SUM(b.total),0) s FROM bookings b JOIN dispatches d ON d.booking_id = b.id WHERE d.vehicle_id = ? AND b.status <> "cancelled"');
     $st2->execute([$vid]);
@@ -331,34 +317,34 @@ ob_start();
     <form method="post" class="fl-form" id="car-form-<?= $vid ?>">
       <?= csrf_field() ?><input type="hidden" name="op" value="save_vehicle"><input type="hidden" name="id" value="<?= $vid ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
       <div class="det-hero">
-        <img src="<?= e(vehicle_photo_url((string)($v['category'] ?? ''), 400)) ?>" alt="" onerror="this.style.visibility='hidden'">
+        <img src="<?= e(vehicle_photo_url((string)($v['category'] ?? ''), 400)) ?>" alt="" onerror="this.style.visibility='hidden'" decoding="async">
         <div class="det-facts" style="border:0;padding:0;flex:1">
-          <div class="det-f"><span class="det-k">Plate</span><span class="det-v"><?= e((string)($v['plate'] ?: '—')) ?></span></div>
+          <div class="det-f"><span class="det-k">Plate</span><span class="det-v"><?= e((string)($v['plate'] ?: 'Ã¢â‚¬â€')) ?></span></div>
           <div class="det-f"><span class="det-k">Seats</span><span class="det-v"><?= (int)$v['passenger_capacity'] ?> pax</span></div>
           <div class="det-f"><span class="det-k">Bags</span><span class="det-v"><?= (int)$v['luggage_capacity'] ?></span></div>
           <div class="det-f"><span class="det-k">Status</span><span class="det-v"><?= status_pill((string)$v['status']) ?></span></div>
           <div class="det-f"><span class="det-k">Booked</span><span class="det-v"><?= (int)$usage['c'] ?> trips &middot; $<?= money($usage['s']) ?></span></div>
-          <div class="det-f"><span class="det-k">Public page</span><span class="det-v"><a href="<?= url('fleet/' . ($v['slug'] ?: '')) ?>">view</a></span></div>
+          <div class="det-f"><span class="det-k">Public page</span><span class="det-v"><a href="<?= url('services/fleet.php?vehicle=' . urlencode((string)($v['slug'] ?: ''))) ?>" target="_blank" rel="noopener">view</a></span></div>
         </div>
       </div>
 
       <div class="det-block">
         <span class="det-h">Rates</span>
         <div class="fl-row2">
-          <div><label class="bk-k" for="cmi<?= $vid ?>">Per mile ($)</label><input id="cmi<?= $vid ?>" name="per_mile_rate" type="number" step="0.01" min="0" class="input" value="<?= e((string)($v['per_mile_rate'] ?? '0')) ?>"></div>
-          <div><label class="bk-k" for="chr<?= $vid ?>">Per hour ($)</label><input id="chr<?= $vid ?>" name="hourly_rate" type="number" step="0.01" min="0" class="input" value="<?= e((string)($v['hourly_rate'] ?? '0')) ?>"></div>
+          <div><label class="bk-k" for="cmi<?= $vid ?>">Per mile ($)</label><input id="cmi<?= $vid ?>" name="per_mile_rate" type="number" step="0.01" min="0" class="input" placeholder="4.50" value="<?= e((string)($v['per_mile_rate'] ?? '0')) ?>"></div>
+          <div><label class="bk-k" for="chr<?= $vid ?>">Per hour ($)</label><input id="chr<?= $vid ?>" name="hourly_rate" type="number" step="0.01" min="0" class="input" placeholder="95.00" value="<?= e((string)($v['hourly_rate'] ?? '0')) ?>"></div>
         </div>
       </div>
 
       <div class="det-block">
         <span class="det-h">Paperwork</span>
         <div class="fl-row2">
-          <div><label class="bk-k" for="ci<?= $vid ?>">Insurance expires</label><input id="ci<?= $vid ?>" name="insurance_expiry" type="date" class="input" value="<?= e((string)($v['insurance_expiry'] ?? '')) ?>"></div>
-          <div><label class="bk-k" for="cr<?= $vid ?>">Registration expires</label><input id="cr<?= $vid ?>" name="registration_expiry" type="date" class="input" value="<?= e((string)($v['registration_expiry'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="ci<?= $vid ?>">Insurance expires</label><input id="ci<?= $vid ?>" name="insurance_expiry" type="date" class="input" placeholder="mm/dd/yyyy" value="<?= e((string)($v['insurance_expiry'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="cr<?= $vid ?>">Registration expires</label><input id="cr<?= $vid ?>" name="registration_expiry" type="date" class="input" placeholder="mm/dd/yyyy" value="<?= e((string)($v['registration_expiry'] ?? '')) ?>"></div>
         </div>
         <div class="fl-row2">
-          <div><label class="bk-k" for="cn<?= $vid ?>">Inspection expires</label><input id="cn<?= $vid ?>" name="inspection_expiry" type="date" class="input" value="<?= e((string)($v['inspection_expiry'] ?? '')) ?>"></div>
-          <div><label class="bk-k" for="cd<?= $vid ?>">Diamond sticker expires</label><input id="cd<?= $vid ?>" name="diamond_sticker_expiry" type="date" class="input" value="<?= e((string)($v['diamond_sticker_expiry'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="cn<?= $vid ?>">Inspection expires</label><input id="cn<?= $vid ?>" name="inspection_expiry" type="date" class="input" placeholder="mm/dd/yyyy" value="<?= e((string)($v['inspection_expiry'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="cd<?= $vid ?>">Diamond sticker expires</label><input id="cd<?= $vid ?>" name="diamond_sticker_expiry" type="date" class="input" placeholder="mm/dd/yyyy" value="<?= e((string)($v['diamond_sticker_expiry'] ?? '')) ?>"></div>
         </div>
         <div class="fl-clock" style="border:0;padding:.4rem 0 0;max-width:none">
           <?php
@@ -379,20 +365,25 @@ ob_start();
       <div class="det-block">
         <span class="det-h">Car details</span>
         <div class="fl-row2">
-          <div><label class="bk-k" for="dmk<?= $vid ?>">Make</label><input id="dmk<?= $vid ?>" name="make" class="input" required value="<?= e($v['make']) ?>"></div>
-          <div><label class="bk-k" for="dmd<?= $vid ?>">Model</label><input id="dmd<?= $vid ?>" name="model" class="input" required value="<?= e($v['model']) ?>"></div>
+          <div><label class="bk-k" for="dmk<?= $vid ?>">Make</label><input id="dmk<?= $vid ?>" name="make" class="input" required placeholder="Cadillac" value="<?= e($v['make']) ?>"></div>
+          <div><label class="bk-k" for="dmd<?= $vid ?>">Model</label><input id="dmd<?= $vid ?>" name="model" class="input" required placeholder="Escalade" value="<?= e($v['model']) ?>"></div>
         </div>
         <div class="fl-row2">
           <div><label class="bk-k" for="dct<?= $vid ?>">Category</label><select id="dct<?= $vid ?>" name="category_id" class="input"><option value="">Uncategorised</option><?php foreach ($cats as $c): ?><option value="<?= (int)$c['id'] ?>" <?= (int)($v['category_id'] ?? 0) === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option><?php endforeach; ?></select></div>
           <div><label class="bk-k" for="dst<?= $vid ?>">Status</label><select id="dst<?= $vid ?>" name="status" class="input"><?php foreach (['active' => 'Active', 'maintenance' => 'In the shop', 'inactive' => 'Retired'] as $sk => $sl): ?><option value="<?= $sk ?>" <?= $v['status'] === $sk ? 'selected' : '' ?>><?= e($sl) ?></option><?php endforeach; ?></select></div>
         </div>
         <div class="fl-row2">
-          <div><label class="bk-k" for="dyr<?= $vid ?>">Year</label><input id="dyr<?= $vid ?>" name="year" type="number" min="1900" max="2100" class="input" value="<?= e((string)($v['year'] ?? '')) ?>"></div>
-          <div><label class="bk-k" for="dpl<?= $vid ?>">Plate</label><input id="dpl<?= $vid ?>" name="plate" class="input" value="<?= e((string)$v['plate']) ?>"></div>
+          <div><label class="bk-k" for="dyr<?= $vid ?>">Year</label><input id="dyr<?= $vid ?>" name="year" type="number" min="1900" max="2100" class="input" placeholder="2024" value="<?= e((string)($v['year'] ?? '')) ?>"></div>
+          <div><label class="bk-k" for="dpl<?= $vid ?>">Plate</label><input id="dpl<?= $vid ?>" name="plate" class="input" placeholder="ELL-3001" value="<?= e((string)$v['plate']) ?>"></div>
+        </div>
+        <div>
+          <label class="bk-k" for="dsl<?= $vid ?>">Public URL slug</label>
+          <input id="dsl<?= $vid ?>" name="slug" class="input" placeholder="cadillac-escalade" value="<?= e((string)($v['slug'] ?? '')) ?>">
+          <span class="fl-hint">Lowercase letters, numbers and dashes. This is what the public fleet page reads.</span>
         </div>
         <div class="fl-row2">
-          <div><label class="bk-k" for="dpx<?= $vid ?>">Passengers</label><input id="dpx<?= $vid ?>" name="passenger_capacity" type="number" min="1" class="input" value="<?= (int)$v['passenger_capacity'] ?>"></div>
-          <div><label class="bk-k" for="dbg<?= $vid ?>">Bags</label><input id="dbg<?= $vid ?>" name="luggage_capacity" type="number" min="0" class="input" value="<?= (int)$v['luggage_capacity'] ?>"></div>
+          <div><label class="bk-k" for="dpx<?= $vid ?>">Passengers</label><input id="dpx<?= $vid ?>" name="passenger_capacity" type="number" min="1" class="input" placeholder="3" value="<?= (int)$v['passenger_capacity'] ?>"></div>
+          <div><label class="bk-k" for="dbg<?= $vid ?>">Bags</label><input id="dbg<?= $vid ?>" name="luggage_capacity" type="number" min="0" class="input" placeholder="2" value="<?= (int)$v['luggage_capacity'] ?>"></div>
         </div>
       </div>
 
@@ -402,44 +393,6 @@ ob_start();
       </div>
       <div><button type="submit" class="fl-btn fl-btn-go">Save <?= e($v['make'] . ' ' . $v['model']) ?></button></div>
     </form>
-
-    <div class="det-block">
-      <span class="det-h">Documents</span>
-      <?php if ($slips): ?>
-        <div class="table-wrap"><table class="fl-table">
-          <thead><tr><th>Document</th><th>Expires</th><th>Status</th><th>File</th><th>Review</th></tr></thead>
-          <tbody>
-          <?php foreach ($slips as $d): ?>
-            <tr>
-              <td><?= e($d['doc_type']) ?></td>
-              <td class="tabular"><?= $d['expiry_date'] ? e(date('j M Y', strtotime((string)$d['expiry_date']))) : '&mdash;' ?></td>
-              <td><?= status_pill((string)$d['status']) ?></td>
-              <td><a href="<?= url($d['file_path']) ?>">open</a></td>
-              <td>
-                <form method="post" class="fl-row2" style="gap:.3rem"><?= csrf_field() ?><input type="hidden" name="op" value="verify_doc"><input type="hidden" name="doc_id" value="<?= (int)$d['id'] ?>"><input type="hidden" name="vehicle_id" value="<?= $vid ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
-                  <select name="doc_status" class="input" style="padding:.35rem .5rem;font-size:.78rem" aria-label="Review <?= e($d['doc_type']) ?>">
-                    <?php foreach (['verified' => 'Verified', 'pending' => 'Pending', 'rejected' => 'Rejected', 'expired' => 'Expired'] as $sk => $sl2): ?><option value="<?= $sk ?>" <?= $d['status'] === $sk ? 'selected' : '' ?>><?= e($sl2) ?></option><?php endforeach; ?>
-                  </select>
-                  <button class="fl-btn">Save</button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-          </tbody>
-        </table></div>
-      <?php else: ?>
-        <p class="det-empty">No documents on file for this car.</p>
-      <?php endif; ?>
-      <form method="post" enctype="multipart/form-data" class="fl-form">
-        <?= csrf_field() ?><input type="hidden" name="op" value="doc"><input type="hidden" name="vehicle_id" value="<?= $vid ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
-        <div class="fl-row2">
-          <div><label class="bk-k" for="ddt<?= $vid ?>">Document</label><input id="ddt<?= $vid ?>" name="doc_type" class="input" value="insurance" placeholder="insurance / registration / inspection / diamond"></div>
-          <div><label class="bk-k" for="ddx<?= $vid ?>">Expires</label><input id="ddx<?= $vid ?>" name="expiry_date" type="date" class="input"></div>
-        </div>
-        <div><label class="bk-k" for="ddf<?= $vid ?>">File</label><input id="ddf<?= $vid ?>" type="file" name="doc" class="input" accept=".jpg,.jpeg,.png,.pdf"></div>
-        <div><button class="fl-btn fl-btn-go">Upload document</button></div>
-      </form>
-    </div>
 
     <div class="det-block">
       <span class="det-h">Blocked time</span>
@@ -469,8 +422,8 @@ ob_start();
       <form method="post" class="fl-form">
         <?= csrf_field() ?><input type="hidden" name="op" value="block"><input type="hidden" name="vehicle_id" value="<?= $vid ?>"><input type="hidden" name="view" value="<?= e($view) ?>">
         <div class="fl-row2">
-          <div><label class="bk-k" for="bs<?= $vid ?>">From</label><input id="bs<?= $vid ?>" name="starts_at" type="datetime-local" class="input" required></div>
-          <div><label class="bk-k" for="be<?= $vid ?>">Until</label><input id="be<?= $vid ?>" name="ends_at" type="datetime-local" class="input" required></div>
+          <div><label class="bk-k" for="bs<?= $vid ?>">From</label><input id="bs<?= $vid ?>" name="starts_at" type="datetime-local" class="input" required placeholder="mm/dd/yyyy hh:mm"></div>
+          <div><label class="bk-k" for="be<?= $vid ?>">Until</label><input id="be<?= $vid ?>" name="ends_at" type="datetime-local" class="input" required placeholder="mm/dd/yyyy hh:mm"></div>
         </div>
         <div><label class="bk-k" for="br<?= $vid ?>">Reason</label><input id="br<?= $vid ?>" name="reason" class="input" placeholder="Service, on loan, driver training"></div>
         <div><button class="fl-btn fl-btn-go">Block this car</button></div>
@@ -484,7 +437,7 @@ ob_start();
   <div class="md-head">
     <div>
       <h2 class="md-title" id="dlg-car-t">Add a car</h2>
-      <p class="md-sub">It joins the fleet straight away. Paperwork dates can wait until you have the certificates.</p>
+      <p class="md-sub">It joins the fleet straight away. Paperwork dates can wait until you have the certificates in hand.</p>
     </div>
     <button type="button" class="md-x" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
   </div>
@@ -503,13 +456,18 @@ ob_start();
         <div><label class="bk-k" for="nyr">Year</label><input id="nyr" name="year" type="number" min="1900" max="2100" class="input" placeholder="2025"></div>
         <div><label class="bk-k" for="nst">Status</label><select id="nst" name="status" class="input"><option value="active">Active</option><option value="maintenance">In the shop</option><option value="inactive">Retired</option></select></div>
       </div>
-      <div class="fl-row2">
-        <div><label class="bk-k" for="npx">Passengers</label><input id="npx" name="passenger_capacity" type="number" min="1" class="input" value="3"></div>
-        <div><label class="bk-k" for="nbg">Bags</label><input id="nbg" name="luggage_capacity" type="number" min="0" class="input" value="2"></div>
+      <div>
+        <label class="bk-k" for="nsl">Public URL slug</label>
+        <input id="nsl" name="slug" class="input" placeholder="cadillac-escalade">
+        <span class="fl-hint">Leave blank and we build it from the make and model.</span>
       </div>
       <div class="fl-row2">
-        <div><label class="bk-k" for="nmi">Per mile ($)</label><input id="nmi" name="per_mile_rate" type="number" step="0.01" min="0" class="input" value="0.00"></div>
-        <div><label class="bk-k" for="nhr">Per hour ($)</label><input id="nhr" name="hourly_rate" type="number" step="0.01" min="0" class="input" value="0.00"></div>
+        <div><label class="bk-k" for="npx">Passengers</label><input id="npx" name="passenger_capacity" type="number" min="1" class="input" placeholder="3" value="3"></div>
+        <div><label class="bk-k" for="nbg">Bags</label><input id="nbg" name="luggage_capacity" type="number" min="0" class="input" placeholder="2" value="2"></div>
+      </div>
+      <div class="fl-row2">
+        <div><label class="bk-k" for="nmi">Per mile ($)</label><input id="nmi" name="per_mile_rate" type="number" step="0.01" min="0" class="input" placeholder="4.50" value="0.00"></div>
+        <div><label class="bk-k" for="nhr">Per hour ($)</label><input id="nhr" name="hourly_rate" type="number" step="0.01" min="0" class="input" placeholder="95.00" value="0.00"></div>
       </div>
       <div class="det-block">
         <span class="det-h">Description <span style="letter-spacing:0;text-transform:none;color:#6a6a6a">&mdash; shown on the public fleet page</span></span>
@@ -518,12 +476,12 @@ ob_start();
       <details class="det-block">
         <summary class="fl-btn" style="list-style:none">Paperwork dates</summary>
         <div class="fl-row2" style="margin-top:.6rem">
-          <div><label class="bk-k" for="ni">Insurance expires</label><input id="ni" name="insurance_expiry" type="date" class="input"></div>
-          <div><label class="bk-k" for="nr">Registration expires</label><input id="nr" name="registration_expiry" type="date" class="input"></div>
+          <div><label class="bk-k" for="ni">Insurance expires</label><input id="ni" name="insurance_expiry" type="date" class="input" placeholder="mm/dd/yyyy"></div>
+          <div><label class="bk-k" for="nr">Registration expires</label><input id="nr" name="registration_expiry" type="date" class="input" placeholder="mm/dd/yyyy"></div>
         </div>
         <div class="fl-row2" style="margin-top:.55rem">
-          <div><label class="bk-k" for="nn">Inspection expires</label><input id="nn" name="inspection_expiry" type="date" class="input"></div>
-          <div><label class="bk-k" for="nds">Diamond sticker expires</label><input id="nds" name="diamond_sticker_expiry" type="date" class="input"></div>
+<div><label class="bk-k" for="nn">Inspection expires</label><input id="nn" name="inspection_expiry" type="date" class="input" placeholder="mm/dd/yyyy"></div>
+  <div><label class="bk-k" for="nds">Diamond sticker expires</label><input id="nds" name="diamond_sticker_expiry" type="date" class="input" placeholder="mm/dd/yyyy"></div>
         </div>
       </details>
     </div>

@@ -35,7 +35,7 @@ ob_start();
 <div class="max-w-7xl mx-auto px-4 py-10 md:py-14 grid lg:grid-cols-2 gap-8 items-stretch">
   <!-- Photo panel -->
   <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868] min-h-[320px]">
-    <img src="https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?auto=format&fit=crop&w=1000&q=60" alt="Vehicle on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'">
+    <img src="https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?auto=format&fit=crop&w=1000&q=60" alt="Vehicle on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C]/90 via-[#0A0A0C]/25 to-transparent"></div>
     <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
       <p class="tabular text-[10px] tracking-widest text-[#D9B978]">HOW GROUP BOOKINGS WORK</p>

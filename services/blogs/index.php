@@ -18,8 +18,8 @@ ob_start();
     <?php foreach ($posts as $p): ?>
     <a href="<?= url('services/blogs/read.php?slug=' . urlencode($p['slug'])) ?>" class="group flex flex-col rounded-2xl overflow-hidden border border-[#2a2a2b] hover:border-[#C8A96B]">
       <div class="h-48 bg-gradient-to-br from-[#0A0A0C] to-[#AB8868] overflow-hidden">
-        <?php if (!empty($p['cover'])): ?>
-        <img src="https://images.unsplash.com/<?= e($p['cover']) ?>?auto=format&fit=crop&w=800&q=60" alt="<?= e($p['title']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.style.display='none'">
+<?php $cu = cover_url($p['cover'], 800); if ($cu !== ''): ?>
+   <img src="<?= e($cu) ?>" alt="<?= e($p['title']) ?>" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" width="800" height="192" onerror="this.style.display='none'">
         <?php endif; ?>
       </div>
       <div class="p-5 flex flex-col flex-1">

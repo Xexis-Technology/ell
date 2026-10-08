@@ -1,20 +1,28 @@
-﻿<?php /** @var string $content */ $navActive = $navActive ?? ''; ?>
+<?php /** @var string $content */ $navActive = $navActive ?? ''; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($pageTitle ?? 'Admin | Exotic Lane Limo') ?></title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="icon" href="<?= url('favicon.ico') ?>">
+<?php
+// The favicon uploaded in SEO & content is the admin's favicon too, so the
+// console is branded the same way the public site is.
+$adminFavicon = '';
+try {
+    if (isset($pdo)) $adminFavicon = media_url(setting($pdo, 'favicon', ''));
+} catch (Throwable) {}
+?>
+<link rel="icon" href="<?= e($adminFavicon ?: url('favicon.ico')) ?>">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924g') ?>">
-<link rel="stylesheet" href="<?= asset('css/admin.css?v=20260926d') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261007a') ?>">
+<link rel="stylesheet" href="<?= asset('css/admin.css?v=20261008c') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.core.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-<script src="<?= asset('js/admin.js?v=20260926e') ?>" defer></script>
+<script src="<?= asset('js/admin.js?v=20261008a') ?>" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js" defer></script>
 </head>
 <body class="admin font-ui">
@@ -50,6 +58,26 @@
 </div>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

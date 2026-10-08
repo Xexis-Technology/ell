@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
       openModal(document.getElementById(btn.dataset.openModal));
     });
   });
+  // A dialog the server rendered as already-selected (a deep link, or a form
+  // that redirected back). It must go through showModal() rather than the open
+  // attribute, or Escape, the backdrop and the focus trap are all missing.
+  document.querySelectorAll('dialog.modal[data-autopen]').forEach((dlg) => {
+    if (!dlg.open) openModal(dlg);
+  });
   document.querySelectorAll('dialog.modal').forEach((dlg) => {
     dlg.querySelectorAll('[data-close-modal]').forEach((b) =>
       b.addEventListener('click', (ev) => {
@@ -71,6 +77,21 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     // Clicking the backdrop (the dialog element itself) closes it.
     dlg.addEventListener('click', (ev) => { if (ev.target === dlg) closeModal(dlg); });
+  });
+
+  // ---- conditional form sections ------------------------------------------
+  // A checkbox that disables a group it controls. The inputs stay in the DOM
+  // and keep their values, but a disabled input is not submitted, which is
+  // exactly what "these fields do not apply right now" should mean.
+  document.querySelectorAll('[data-gates]').forEach((box) => {
+    const target = document.getElementById(box.dataset.gates);
+    if (!target) return;
+    const apply = () => {
+      target.hidden = box.checked;
+      target.querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = box.checked; });
+    };
+    box.addEventListener('change', apply);
+    apply();
   });
 
   // ---- Quill rich text ----------------------------------------------------
@@ -111,11 +132,17 @@ document.addEventListener('DOMContentLoaded', () => {
       ta.style.display = 'none';
 
       let q;
+      // Descriptions need bold and lists. An article also needs headings, which
+      // is what most posts are actually built from - so the blog asks for the
+      // richer toolbar rather than the whole admin gaining a stray control.
+      const toolbar = ta.dataset.qlPreset === 'article'
+        ? [['bold', 'italic', 'underline'], [{ header: [2, 3, false] }], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']]
+        : [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']];
       try {
         q = new Quill(mount, {
           theme: 'snow',
           placeholder: ta.getAttribute('placeholder') || 'Write something…',
-          modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link'], ['clean']] },
+          modules: { toolbar },
         });
       } catch (err) {
         mount.remove();
@@ -124,7 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       if (stored) q.clipboard.dangerouslyPasteHTML(stored);
-      q.on('text-change', () => { mirror.value = q.root.innerHTML; });
+      // Announce edits so a page can mirror the editor into a live preview
+      // without polling the hidden mirror input.
+      q.on('text-change', () => {
+        mirror.value = q.root.innerHTML;
+        ta.dispatchEvent(new CustomEvent('ell:richtext', { bubbles: true, detail: { html: mirror.value } }));
+      });
       // Sync from the editor only when it actually holds something, so an empty
       // editor never replaces a description that is on file.
       if (q.getText().trim()) mirror.value = q.root.innerHTML;

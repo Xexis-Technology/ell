@@ -43,8 +43,25 @@ table.data td{padding:.65rem;border-bottom:1px solid #262628}
 .hairline-b{border-bottom:1px solid #262628}
 .flight-code{font-size:.7rem;letter-spacing:.18em;color:var(--gold-mute);font-variant-numeric:tabular-nums;font-weight:600}
 .tabular{font-variant-numeric:tabular-nums}
-.blog-body h2{font-family:"Cormorant Garamond",Georgia,serif;font-size:1.5rem;color:var(--champagne);margin-top:1.25rem}
+/* Everything the editor can produce. Tailwind's preflight strips list markers
+   and margins from ul/ol, and the base link colour is the body colour, so
+   without these a bulleted list and a numbered list render as the same run of
+   unmarked paragraphs and a link is indistinguishable from the words around it. */
+.blog-body>*:first-child{margin-top:0}
 .blog-body p{margin-top:.75rem}
+.blog-body h2{font-family:"Cormorant Garamond",Georgia,serif;font-size:1.5rem;line-height:1.2;color:var(--champagne);margin:1.6rem 0 .1rem;font-weight:600}
+.blog-body h3{font-family:"Cormorant Garamond",Georgia,serif;font-size:1.2rem;line-height:1.25;color:var(--champagne);margin:1.35rem 0 .1rem;font-weight:600}
+.blog-body h4{font-size:1rem;font-weight:600;color:#F5F5F3;margin:1.15rem 0 .1rem}
+.blog-body ul,.blog-body ol{margin:.75rem 0 0;padding-left:1.35rem;list-style-position:outside}
+.blog-body ul{list-style:disc}
+.blog-body ol{list-style:decimal}
+.blog-body li{margin-top:.35rem;padding-left:.15rem}
+.blog-body li::marker{color:var(--champagne)}
+.blog-body a{color:var(--champagne,#F3D4A6);text-decoration:underline;text-underline-offset:.18em;text-decoration-color:rgba(212,175,107,.45);transition:text-decoration-color .14s,color .14s}
+.blog-body a:hover{color:#F2D9A8;text-decoration-color:#F2D9A8}
+.blog-body strong{color:#F5F5F3;font-weight:600}
+.blog-body em{color:#E5E5E3}
+.blog-body blockquote{margin:1.1rem 0 0;padding:.15rem 0 .15rem 1rem;border-left:2px solid rgba(212,175,107,.5);color:#C9C9C6;font-style:italic}
 .marquee{overflow:hidden;white-space:nowrap}
 .marquee-track{display:inline-flex;align-items:center;width:max-content;animation:ell-marquee 48s linear infinite;will-change:transform}
 .marquee-track>span{padding-right:2.75rem}

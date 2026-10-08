@@ -26,17 +26,20 @@ function validate_password(string $pw): ?string
     return null;
 }
 
-/** Secure file upload for driver/vehicle documents. Returns stored path or null+error. */
-function secure_upload(array $file, string $subdir, array $allowed = ['jpg','jpeg','png','pdf'], int $maxBytes = 5242880): array
+/** Secure file upload for driver/vehicle documents and post covers. Returns stored path or null+error. */
+function secure_upload(array $file, string $subdir, array $allowed = ['jpg','jpeg','png','pdf'], int $maxBytes = 5242880, array $allowedMime = ['image/jpeg','image/png','image/webp','application/pdf']): array
 {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         return [null, 'No file uploaded.'];
     }
     if (($file['error'] ?? 0) !== UPLOAD_ERR_OK) {
-        return [null, 'Upload failed.'];
+        // UPLOAD_ERR_INI_SIZE / FORM_SIZE mean the file was too big for PHP.
+        return [null, in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+            ? 'That file is larger than the ' . round($maxBytes / 1048576, 1) . 'MB limit.'
+            : 'Upload failed.'];
     }
-    if ($file['size'] > $maxBytes) {
-        return [null, 'File too large (max 5MB).'];
+    if (($file['size'] ?? 0) > $maxBytes) {
+        return [null, 'That file is ' . round(($file['size'] ?? 0) / 1048576, 1) . 'MB. The limit is ' . round($maxBytes / 1048576, 1) . 'MB.'];
     }
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if (!in_array($ext, $allowed, true)) {
@@ -44,9 +47,9 @@ function secure_upload(array $file, string $subdir, array $allowed = ['jpg','jpe
     }
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($file['tmp_name']);
-    $allowedMime = ['image/jpeg','image/png','application/pdf'];
+    // The extension is the author's claim; the bytes are the truth.
     if (!in_array($mime, $allowedMime, true)) {
-        return [null, 'Invalid file content.'];
+        return [null, 'That file is not a ' . strtoupper(implode('/', $allowed)) . ' image.'];
     }
     $dir = APP_ROOT . '/storage/uploads/' . trim($subdir, '/');
     if (!is_dir($dir)) mkdir($dir, 0755, true);

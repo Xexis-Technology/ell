@@ -6,7 +6,7 @@ ob_start();
 <!-- HERO PANEL -->
 <section class="max-w-7xl mx-auto px-4 pt-6">
   <div class="relative overflow-hidden rounded-3xl bg-[#0F0F0E] border border-[#262628]">
-    <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=60" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40" loading="lazy" onerror="this.style.display='none'">
+    <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=60" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <div class="absolute inset-0 bg-gradient-to-r from-[#0A0A0C] via-[#0A0A0C]/70 to-transparent"></div>
     <div class="relative p-6 md:p-12">
       <h1 class="text-5xl md:text-7xl text-[#F9F9F9] font-semibold leading-tight">Your route,<br><em class="font-display font-medium text-[#F3D4A6]">driven</em> your way</h1>
@@ -29,10 +29,10 @@ ob_start();
       <p class="text-xl md:text-2xl text-[#F9F9F9] leading-relaxed max-w-3xl">Direct chauffeured transfer from pickup to destination — <em class="font-display text-[#8a8a8a]">with up to 6 optional stops along the way.</em> One-way or round-trip, with Meet &amp; Greet and child seats available at booking.</p>
       <div class="grid sm:grid-cols-2 gap-5 mt-8 max-w-3xl">
         <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-          <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=800&q=60" alt="Black luxury sedan" class="w-full h-56 md:h-64 object-cover" loading="lazy" onerror="this.style.display='none'">
+          <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=800&q=60" alt="Black luxury sedan" class="w-full h-56 md:h-64 object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
         </div>
         <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-          <img src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=60" alt="Luxury car front" class="w-full h-56 md:h-64 object-cover" loading="lazy" onerror="this.style.display='none'">
+          <img src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=60" alt="Luxury car front" class="w-full h-56 md:h-64 object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
         </div>
       </div>
     </div>

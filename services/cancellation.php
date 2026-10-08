@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
+require_once __DIR__ . '/../app/richtext.php';
 $pdo = Database::pdo();
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -44,7 +45,7 @@ ob_start();
   <div class="grid md:grid-cols-2 gap-5 mt-6 items-start">
     <div class="card rounded-2xl p-6">
       <h2 class="font-display text-xl text-[#F3D4A6]">Policy</h2>
-      <div class="text-sm mt-2 space-y-2"><?= $policy ?: '<p>Cancellations follow the published policy. Request below.</p>' ?></div>
+      <div class="text-sm mt-2 space-y-2"><?= render_rich_text($policy) ?: '<p>Cancellations follow the published policy. Request below.</p>' ?></div>
       <p class="text-xs text-[#AB8868] mt-4">Paid bookings are refunded per policy. <a class="underline" href="<?= url('legal/terms.php') ?>">Read terms</a> · <a class="underline" href="<?= url('legal/contact.php') ?>">Contact us</a></p>
     </div>
     <form method="post" class="card rounded-2xl p-6 space-y-4"><?= csrf_field() ?>
@@ -58,5 +59,6 @@ ob_start();
 <?php
 $content = ob_get_clean();
 $pageTitle = 'Cancellation | Exotic Lane Limo';
+$seo = content_seo($pdo, 'cancellation');
 $headerVariant = 'index';
 require APP_ROOT . '/views/layouts/public.php';

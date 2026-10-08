@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
+require_once __DIR__ . '/../app/richtext.php';
 $pdo = Database::pdo();
 try { $body = $pdo->query('SELECT body FROM content WHERE slug = "faq" LIMIT 1')->fetch()['body'] ?? ''; } catch (Throwable) { $body = ''; }
 $groups = [
@@ -70,12 +71,17 @@ ob_start();
     <?php $first = false; endforeach; ?>
   </div>
   <?php if ($body): ?>
-  <div class="card rounded-2xl p-6 mt-8 text-sm text-[#E5E5E3] space-y-2"><?= $body ?></div>
+  <div class="card rounded-2xl p-6 mt-8 text-sm text-[#E5E5E3] space-y-2"><?= render_rich_text($body) ?></div>
   <?php endif; ?>
 </div>
 <?php
 $content = ob_get_clean();
 $pageTitle = 'FAQ | Exotic Lane Limo';
+$seo = content_seo($pdo, 'faq');
 $metaDesc = 'FAQs: booking, pricing and payment, rides, pickup changes, airport service, account help.';
 $headerVariant = 'index';
+// The 14 questions above are already in the page as real text, so they are
+// worth claiming as a FAQ block. Anything not in $faqs stays out of the
+// structured data rather than being invented.
+$schemaNodes = array_values(array_filter([seo_faq_node($faqs)]));
 require APP_ROOT . '/views/layouts/public.php';

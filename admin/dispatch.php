@@ -343,7 +343,7 @@ document.addEventListener('alpine:init', function () {
                     <div class="pk pk--end" x-data="dpPicker('cars', <?= (int)($u['vehicle_id'] ?? 0) ?>)" @keydown.escape="hide()">
                       <input type="hidden" name="vehicle_id" :value="selected">
                       <button type="button" class="pk-btn" @click="open ? hide() : show()" :aria-expanded="open" aria-haspopup="listbox" aria-labelledby="cl_<?= (int)$u['id'] ?>">
-                        <template x-if="current"><img class="pk-thumb pk-thumb-img" :src="current.img" alt="" x-text="current.n"></template>
+                        <template x-if="current"><img class="pk-thumb pk-thumb-img" :src="current.img" alt="" x-text="current.n" decoding="async"></template>
                         <span class="pk-btn-txt" :class="current ? '' : 'is-empty'" x-text="label"></span>
                         <i class="fa-solid fa-chevron-down pk-caret" aria-hidden="true"></i>
                       </button>
@@ -360,7 +360,7 @@ document.addEventListener('alpine:init', function () {
                           </li>
                           <template x-for="(o, i) in filtered" :key="o.id">
                             <li class="pk-item" :class="cursor === i ? 'is-cur' : ''" role="option" :aria-selected="selected === o.id" @mouseenter="cursor = i" @click="pick(o.id)">
-                              <img class="pk-thumb pk-thumb-img" :src="o.img" :alt="o.n" loading="lazy" onerror="this.style.visibility='hidden'">
+                              <img class="pk-thumb pk-thumb-img" :src="o.img" :alt="o.n" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
                               <span class="pk-item-body">
                                 <b x-text="o.n"></b>
                                 <small><span class="pk-plate" x-text="o.plate || 'No plate'"></span> &middot; <span x-text="o.cap"></span></small>

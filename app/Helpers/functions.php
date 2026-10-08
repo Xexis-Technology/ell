@@ -213,9 +213,9 @@ function money(float|int|string $v): string
 /** Status pill for admin tables. Never invents states — unknown values get neutral styling. */
 function status_pill(string $status): string
 {
-    static $green = ['paid','active','verified','succeeded','booking_received','confirmed','finish','sent'];
+    static $green = ['paid','active','verified','succeeded','booking_received','confirmed','finish','sent','published'];
     static $red = ['failed','inactive','suspended','rejected','cancelled','refunded','expired'];
-    static $gold = ['pending','processing','requested','assigned','approved','quoted','new','pricing_finalized','awaiting_pricing','partially_refunded','partially_paid','unpaid','maintenance'];
+    static $gold = ['pending','processing','requested','assigned','approved','quoted','new','pricing_finalized','awaiting_pricing','partially_refunded','partially_paid','unpaid','maintenance','draft'];
     static $blue = ['on_the_way','arrived','at_pickup_location','on_board'];
     if (in_array($status, $green, true)) $cls = 'pill-green';
     elseif (in_array($status, $red, true)) $cls = 'pill-red';
@@ -257,7 +257,75 @@ function vehicle_photo(?string $category): array
 function vehicle_photo_url(?string $category, int $w = 800): string
 {
     [$id] = vehicle_photo($category);
-    return 'https://images.unsplash.com/' . $id . '?auto=format&fit=crop&w=' . $w . '&q=60';
+    return unsplash_url($id, $w);
+}
+
+/**
+ * One place that turns whatever is in a `cover` column into an image URL, so
+ * the admin list, the editor preview and the public pages cannot drift apart.
+ * Handles a stored upload under storage/uploads, a pasted full URL, or a bare
+ * Unsplash photo id.
+ */
+function cover_url(?string $cover, int $w = 1200): string
+{
+    $c = trim((string)$cover);
+    if ($c === '') return '';
+    if (preg_match('#^storage/uploads/#i', $c)) return url($c);
+    if (preg_match('#^https?://#i', $c)) return $c;
+    return unsplash_url($c, $w);
+}
+
+function unsplash_url(string $photoId, int $w = 1200): string
+{
+    $id = trim($photoId);
+    if ($id === '') return '';
+    // auto=format lets the CDN answer with AVIF/WebP when the browser can take
+    // it; q drops a little on thumbnails where banding is invisible.
+    $q = $w <= 600 ? 55 : 62;
+    return 'https://images.unsplash.com/' . rawurlencode($id) . '?auto=format&fit=crop&w=' . $w . '&q=' . $q;
+}
+
+/**
+ * Resolve an image an admin typed or uploaded into a usable absolute URL.
+ * Shared so the CMS preview and the rendered <head> cannot disagree.
+ */
+function media_url(?string $value): string
+{
+    $v = trim((string)$value);
+    if ($v === '') return '';
+    if (preg_match('#^https?://#i', $v)) return $v;
+    if (preg_match('#^storage/#i', $v)) return url($v);
+    if (preg_match('#^photo-[A-Za-z0-9-]+$#', $v)) return unsplash_url($v, 1200);
+    return url($v);
+}
+
+/**
+ * SEO overrides for a CMS content row, shaped for views/layouts/public.php.
+ * A page that passes this gets whatever admin/cms.php saved; anything blank
+ * there falls back to the site default inside the layout.
+ */
+function content_seo(PDO $pdo, string $slug): array
+{
+    try {
+        $st = $pdo->prepare('SELECT meta_title, meta_description, meta_keywords, og_title, og_description,
+                og_image, canonical_url, noindex FROM content WHERE slug = ? LIMIT 1');
+        $st->execute([$slug]);
+        $r = $st->fetch();
+    } catch (Throwable) {
+        $r = false;
+    }
+    if (!$r) return [];
+    $pick = static fn(?string $v): ?string => trim((string)$v) !== '' ? trim((string)$v) : null;
+    return array_filter([
+        'title' => $pick($r['meta_title'] ?? ''),
+        'description' => $pick($r['meta_description'] ?? ''),
+        'keywords' => $pick($r['meta_keywords'] ?? ''),
+        'og_title' => $pick($r['og_title'] ?? ''),
+        'og_description' => $pick($r['og_description'] ?? ''),
+        'og_image' => $pick($r['og_image'] ?? ''),
+        'canonical' => $pick($r['canonical_url'] ?? ''),
+        'noindex' => (int)($r['noindex'] ?? 0) === 1 ? true : null,
+    ], static fn($v) => $v !== null);
 }
 
 function slugify(string $s): string
