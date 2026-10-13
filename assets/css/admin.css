@@ -492,8 +492,15 @@ dialog.modal{
   margin:auto;position:fixed;inset:0;
   box-shadow:0 32px 90px rgba(0,0,0,.75);
 }
-/* md-body owns the scrolling; the dialog itself must not clip the rounded corners */
+/* md-body owns the scrolling; the dialog itself must not clip the rounded corners.
+   The dialog is a flex column so md-body absorbs whatever space is left and the
+   head and foot can never be pushed out of the clipped box. This replaced a fixed
+   `max-height:calc(100vh - 12rem)` on md-body, which assumed head+foot were
+   exactly 12rem tall. When they were not - the head wraps its subtitle, the foot
+   wraps its buttons on a narrow screen - the sum exceeded the dialog's own
+   max-height and `overflow:hidden` ate the bottom of the footer. */
 dialog.modal{overflow:hidden}
+dialog.modal[open]{display:flex;flex-direction:column;animation:modal-in .16s ease-out}
 dialog.modal>.md-head{border-radius:18px 18px 0 0}
 dialog.modal>.md-foot{border-radius:0 0 18px 18px}
 /* a dialog with no .md-foot still needs its bottom corners restored */
@@ -501,6 +508,17 @@ dialog.modal>.md-body:last-child{border-radius:0 0 18px 18px}
 dialog.modal::backdrop{background:rgba(6,6,8,.78)}
 dialog.modal.is-wide{width:min(880px,calc(100vw - 2rem))}
 dialog.modal[open]{animation:modal-in .16s ease-out}
+/* head and foot keep their natural height; only the body flexes and scrolls */
+dialog.modal[open]>.md-head,dialog.modal[open]>.md-foot{flex:0 0 auto}
+/*
+  Some dialogs - "Add a driver" among them - wrap .md-body and .md-foot in a
+  <form> so the submit button posts with them. That form is then the dialog's only
+  flex item, so it has to become a flex column itself or the body never gets the
+  min-height:0 it needs and cannot scroll. Without this the dialog's own
+  max-height clipped the form instead and the lower fields were unreachable.
+*/
+dialog.modal[open]>form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+dialog.modal[open]>form>.md-foot{flex:0 0 auto}
 @keyframes modal-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){dialog.modal[open]{animation:none}}
 
@@ -509,7 +527,7 @@ dialog.modal[open]{animation:modal-in .16s ease-out}
 .md-sub{margin-top:.25rem;font-size:.78rem;color:#8a8a8a;line-height:1.5}
 .md-x{width:34px;height:34px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid #2a2a2b;background:transparent;color:#8a8a8a;cursor:pointer;font-size:.7rem}
 .md-x:hover{border-color:var(--dp-amber);color:var(--dp-amber)}
-.md-body{padding:1.1rem 1.25rem;display:grid;gap:.85rem;max-height:calc(100vh - 12rem);overflow-y:auto}
+.md-body{padding:1.1rem 1.25rem;display:grid;gap:.85rem;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .md-foot{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.9rem 1.25rem 1.15rem;border-top:1px solid #262628}
 .md-foot-note{margin-left:auto;font-size:.72rem;color:#7a7a78}
 .md-head-acts{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
@@ -549,7 +567,39 @@ dialog.modal[open]{animation:modal-in .16s ease-out}
 .det{display:grid;gap:.9rem}
 .det-hero{display:flex;gap:.9rem;align-items:center;min-width:0}
 .det-hero img{width:88px;height:64px;border-radius:11px;object-fit:cover;background:#1d1d20;flex-shrink:0}
-.det-ava{width:64px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#2b2b30,#1a1a1d);font-family:var(--dp-mono);font-size:1.25rem;font-weight:600;color:var(--champagne,#F3D4A6);flex-shrink:0}
+.det-ava{position:relative;width:64px;height:64px;flex-shrink:0;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(150deg,#2b2b30,#1a1a1d);overflow:hidden;
+  font-family:var(--dp-mono);font-size:1.25rem;font-weight:600;color:var(--champagne,#F3D4A6)}
+/* The driver's own picture sits over the initials, so a missing or unreadable
+   file falls back to the initials instead of a broken image. */
+.det-ava-i{line-height:1}
+.det-ava img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* What the driver photographed: the licence and their own picture, side by side,
+   each opening full size on click. */
+.drv-shots{display:grid;gap:.6rem;grid-template-columns:1fr 1fr;margin-top:.1rem}
+@media (max-width:520px){.drv-shots{grid-template-columns:1fr}}
+.drv-shot{margin:0;display:grid;gap:.35rem}
+.drv-shot-k{display:flex;align-items:baseline;justify-content:space-between;gap:.4rem;
+  font-family:var(--dp-mono);font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:#8a8a8a}
+.drv-shot-k em{font-style:normal;letter-spacing:.08em;color:#AB8868}
+.drv-shot a{display:block;background:#0f0f11;border:1px solid #262628;border-radius:10px;overflow:hidden}
+.drv-shot img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover}
+.drv-shot a:hover{border-color:#4a4a4d}
+.drv-shot-none{display:flex;align-items:center;justify-content:center;gap:.4rem;aspect-ratio:3/2;
+  border:1px dashed #2f2f32;border-radius:10px;color:#7a7a78;font-size:.78rem;text-align:center;padding:.5rem}
+.drv-shot-m{font-size:.68rem;color:#8a8a8a}
+
+/* The full record, read down rather than scattered across editable fields. */
+.drv-record{display:grid;gap:.1rem;margin:0}
+.drv-record>div{display:grid;grid-template-columns:11rem minmax(0,1fr);gap:.7rem;padding:.42rem 0;
+  border-bottom:1px solid #1e1e20}
+.drv-record>div:last-child{border-bottom:0}
+.drv-record dt{font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:#8a8a8a}
+.drv-record dd{margin:0;font-size:.85rem;color:#e6e6e4;overflow-wrap:anywhere}
+.drv-record-mono{font-family:var(--dp-mono);letter-spacing:.02em}
+.drv-record-note{color:#7a7a78;font-size:.78rem}
+@media (max-width:520px){.drv-record>div{grid-template-columns:1fr;gap:.1rem}}
 .det-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem 1rem;padding:.85rem 0;border-top:1px solid #262628;border-bottom:1px solid #262628}
 .det-f{min-width:0}
 .det-k{display:block;font-family:var(--dp-mono);font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:#8a8a8a;font-weight:600;margin-bottom:.25rem}
@@ -2154,3 +2204,381 @@ dialog.modal.bl-dlg .md-body{max-height:calc(100vh - 11rem)}
   .au-origin-bar{grid-column:1 / -1;order:3}
 }
 @media (prefers-reduced-motion:reduce){.au-view,.au-chip,.au-search button{transition:none}}
+/* ---------------- passkeys (settings.php) ---------------- */
+
+/* The desk is a card in the same system as the rest of the page, so it gets
+   the panel background rather than inheriting the page's flat background. */
+.pk-desk{background:var(--st-panel);border:1px solid var(--st-line);border-radius:16px;padding:1.15rem 1.25rem;margin-top:1.5rem}
+/* .st-head is a flex row; the heading must not be squeezed by the button. */
+.pk-desk .st-head{align-items:center}
+.pk-desk .st-head>div{min-width:0}
+.pk-desk .st-sub{max-width:64ch}
+.pk-msg{display:flex;align-items:flex-start;gap:.5rem;margin-top:1rem;padding:.7rem .85rem;border-radius:10px;font-size:.8rem;line-height:1.5;border:1px solid var(--st-line);background:#161618;color:#c9c9c6}
+.pk-msg.is-ok{color:var(--st-ok-ink);border-color:#2c4a35;background:var(--st-ok-bg)}
+.pk-msg.is-bad{color:var(--st-bad-ink);border-color:#5a2f2b;background:var(--st-bad-bg)}
+.pk-msg.is-busy{color:var(--st-wait-ink);border-color:#5a4526;background:var(--st-wait-bg)}
+.pk-list{list-style:none;margin:1.15rem 0 0;padding:0;display:grid;gap:.55rem}
+.pk-row{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:.7rem .8rem;border:1px solid var(--st-line-soft);border-radius:12px;background:#131315}
+.pk-mark{width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:9px;background:#101013;border:1px solid var(--st-line);color:var(--st-gold)}
+.pk-what{flex:1;min-width:0}
+.pk-rename{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.pk-rename input{flex:1;min-width:130px;max-width:280px;background:#0f0f11;border:1px solid #2f2f32;color:var(--st-text);border-radius:8px;padding:.4rem .6rem;font-size:.82rem}
+.pk-rename input:focus-visible{outline:2px solid var(--st-gold);outline-offset:1px}
+.pk-save{border:1px solid var(--st-line);background:#1c1c1f;color:#cfcfcf;font-size:.73rem;font-weight:600;padding:.4rem .75rem;border-radius:999px;cursor:pointer}
+.pk-save:hover{border-color:#4a4a4d;color:#fff}
+.pk-save:focus-visible{outline:2px solid var(--st-gold);outline-offset:2px}
+.pk-meta{margin:.3rem 0 0;font-family:var(--st-mono);font-size:.64rem;letter-spacing:.04em;color:#6a6a6a;overflow-wrap:anywhere}
+.pk-del{margin-left:auto}
+.pk-remove{display:inline-flex;align-items:center;gap:.35rem;border:1px solid #A3322F;background:transparent;color:#f3c1bd;font-size:.73rem;font-weight:600;padding:.4rem .8rem;border-radius:999px;cursor:pointer}
+.pk-remove:hover{background:#2a1210}
+.pk-remove:focus-visible{outline:2px solid var(--st-gold);outline-offset:2px}
+@media (max-width:640px){
+  .pk-desk{padding:1rem}
+  .pk-del{margin-left:0;width:100%}
+  .pk-remove{width:100%;justify-content:center}
+}
+/* ---------------- driver popup: editable record ---------------- */
+/* Each field owns a cell so the save state can sit beside it without shifting
+   anything - a confirmation that moves the form is a confirmation nobody trusts. */
+.bk-cell{position:relative}
+.bk-set{border:1px solid #2a2a2c;border-radius:12px;padding:.85rem .95rem .95rem;margin:1rem 0 0}
+.bk-set-h{font-family:var(--dp-mono,ui-monospace,monospace);font-size:.62rem;letter-spacing:.16em;
+  text-transform:uppercase;color:#AB8868;padding:0 .3rem}
+.bk-set-note{margin:.25rem 0 .75rem;font-size:.8rem;color:#8a8a8a;line-height:1.4}
+
+/* Block-level on purpose. As an inline-flex it shared the line with the hint
+   under the input and the two ran into each other. */
+.live-say{display:flex;align-items:center;gap:.3rem;width:max-content;max-width:100%;
+  margin-top:.35rem;
+  font-family:var(--dp-mono,ui-monospace,monospace);font-size:.62rem;letter-spacing:.1em;
+  text-transform:uppercase;color:#6FA97A}
+.live-say[data-state=wait]{color:#8a8a8a}
+.live-say[data-state=bad]{color:#B4554F}
+@media (prefers-reduced-motion:reduce){.live-say{transition:none}}
+
+/* ---------------------------------------------------------------------------
+   The bookings board.
+
+   The desk reads this list to answer one question: what needs doing next? So the
+   sheet is ordered by pickup time rather than by who typed the row, grouped by
+   day, and every row carries the two things the old table omitted — who the
+   guest is and where the car is going. Stage and payment stay as separate words
+   because the desk keeps them apart: a job can be on the road and still unpaid.
+--------------------------------------------------------------------------- */
+.bk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* Filter chips carry the number of bookings behind each stage, so clicking one
+   tells you the size of the job before you commit to it. */
+.bk-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.85rem}
+.bk-find{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.bk-q{max-width:260px}
+.bk-chip{display:inline-flex;align-items:center;gap:.45rem;
+  padding:.4rem .7rem .4rem .75rem;border:1px solid #3a3a3d;border-radius:999px;
+  font-size:.72rem;letter-spacing:.02em;color:#ab8868;
+  text-decoration:none;transition:border-color .16s,color .16s,background-color .16s}
+.bk-chip b{font-family:var(--st-mono);font-size:.66rem;font-weight:600;color:#6f6f72;
+  transition:color .16s}
+.bk-chip:hover{border-color:#c8a96b;color:#f3d4a6}
+.bk-chip:hover b{color:#ab8868}
+.bk-chip.is-on{background:#d9b978;border-color:#d9b978;color:#0a0a0c;font-weight:600}
+.bk-chip.is-on b{color:#3d3418}
+.bk-chip:focus-visible{outline:2px solid #f3d4a6;outline-offset:2px}
+
+.bk-board{margin-top:1.5rem}
+.bk-band{display:flex;align-items:center;gap:.6rem;
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-size:1.05rem;font-weight:600;letter-spacing:.02em;color:#f5f5f3;margin:0 0 .5rem}
+.bk-band-n{font-size:.7rem;color:#8a8a8a;font-weight:500}
+
+/* Day rules sit inside the sheet rather than above separate tables, so the desk
+   reads one continuous board instead of fifteen copies of the same header. The
+   flex row lives on an inner div, not on the cell — display:flex on a spanning
+   table cell drops it out of the table layout and collapses it to content
+   width, which turns the day name into a one-character-per-line strip. */
+.bk-dayrow td{padding:0;border-bottom:1px solid #242427;background:#101012}
+.bk-daybar{display:flex;align-items:center;gap:.7rem;padding:.95rem .8rem .6rem;
+  font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#ab8868}
+.bk-dayname{color:#ab8868;white-space:nowrap}
+.bk-dayn{font-size:.66rem;letter-spacing:.06em;text-transform:none;color:#6f6f72;white-space:nowrap}
+.bk-day-rule{flex:1 1 auto;height:1px;background:#2a2a2b;min-width:1.5rem}
+
+/* An unrecorded value is a real state, not a blank: a dash that says "nothing
+   written down" beats an empty bordered pill that looks like a broken control. */
+.bk-none{color:#4f4f53;font-size:.8rem}
+
+/* position:relative is load-bearing, not decoration: without it this is a static
+   box, so the absolutely-positioned .bk-sr labels inside resolve against the
+   viewport instead of the scroller, escape the clip, and sit at the table's
+   ~900px mark — which silently stretched the whole page to scroll sideways. */
+.bk-scroll{position:relative;overflow-x:auto;border:1px solid #242427;border-radius:14px;background:#121214}
+.bk-sheet{width:100%;border-collapse:collapse;font-size:.8rem;min-width:940px}
+.bk-sheet thead th{
+  font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:#6f6f72;
+  font-weight:600;text-align:left;padding:.7rem .8rem;
+  border-bottom:1px solid #242427;white-space:nowrap;background:#151517}
+.bk-sheet tbody td{padding:.72rem .8rem;border-bottom:1px solid #1c1c1f;vertical-align:middle}
+.bk-sheet tbody tr:last-child td{border-bottom:0}
+.bk-sheet tbody tr{transition:background-color .14s}
+.bk-sheet tbody tr:hover{background:#17171a}
+
+/* Pickup reads as a time over its reference, the way a dispatcher would say it:
+   "the 08:15, that's ELL-0007". The pair is one link — the whole point of the
+   row is to open the booking, so it needs no separate "Open" button saying so. */
+.bk-when{width:1%;white-space:nowrap}
+.bk-whenlink{display:block;text-decoration:none}
+.bk-whenlink b{display:block;font-family:var(--st-mono);font-size:.9rem;font-weight:600;color:#f5f5f3;letter-spacing:.02em}
+.bk-ref{display:block;font-family:var(--st-mono);font-size:.64rem;margin-top:.15rem;letter-spacing:.04em;
+  color:#7d7d82;transition:color .14s}
+.bk-whenlink:hover b{color:#f3d4a6}
+.bk-whenlink:hover .bk-ref{color:#c8a96b}
+.bk-whenlink:focus-visible{outline:2px solid #f3d4a6;outline-offset:3px;border-radius:4px}
+
+.bk-guest{min-width:150px}
+.bk-gname{display:block;font-size:.82rem;color:#f5f5f3}
+.bk-gcar{display:block;font-size:.68rem;color:#7d7d82;margin-top:.12rem}
+
+/* The route is the reason the row exists, so it gets the strongest contrast on
+   the sheet. The connector is drawn rather than typed so it can thin out and
+   align with the type without a stray arrow in the text — it has to actually
+   read at rest, or it is just a gap. */
+.bk-route{min-width:230px}
+.bk-rp,.bk-rd{display:block;font-size:.8rem;line-height:1.35;color:#f5f5f3}
+.bk-rd{color:#c9c9cc}
+.bk-rl{display:block;width:30px;height:1px;background:#52525a;margin:.34rem 0;
+  position:relative}
+.bk-rl::after{content:"";position:absolute;right:0;top:-3px;
+  width:6px;height:6px;border-top:1px solid #8a8a92;border-right:1px solid #8a8a92;
+  transform:rotate(45deg)}
+.bk-sheet tbody tr:hover .bk-rl{background:#c8a96b}
+.bk-sheet tbody tr:hover .bk-rl::after{border-color:#c8a96b}
+
+.bk-svc{width:1%;white-space:nowrap}
+/* Scoped to the sheet on purpose. There is an older .bk-tag on the booking
+   detail page set in uppercase with wide tracking; reusing it here leaked that
+   styling in and left the Service column shouting while every other label in
+   the row stayed sentence case. This is a value, not a field label. */
+.bk-svctag{display:inline-block;font-size:.7rem;color:#ab8868;
+  border:1px solid #2a2a2b;border-radius:6px;padding:.18rem .45rem;
+  text-transform:none;letter-spacing:0}
+.bk-sheet tbody tr:hover .bk-svctag{border-color:#3a3a3d;color:#c8a96b}
+
+.bk-h-pay{width:1%;white-space:nowrap}
+.bk-h-num{width:1%;text-align:right;white-space:nowrap;font-size:.82rem;color:#f5f5f3}
+.bk-h-act{width:1%;white-space:nowrap;text-align:right}
+.bk-h-act .bk-btn+.bk-btn{margin-left:.3rem}
+
+/* On the sheet a row's actions are icons only. Every row would otherwise carry
+   the same two words repeated down two hundred rows, and the desk recognises
+   the eye and the plane by now. The words are still in the markup for the
+   narrow layout and for anyone who cannot see the glyph — the icon buttons
+   carry aria-label and title, so nothing is lost when the label is hidden. */
+.bk-sheet td.bk-h-act .bk-btn{padding:.3rem .55rem;font-size:.7rem}
+.bk-btn-ico{width:1.95rem;height:1.95rem;padding:0}
+.bk-btn-t{display:none}
+
+/* A warning about `.bk-empty`, which is defined once near the top of this file
+   (line 83) as a small muted-text hook. It is shared by the booking detail and
+   dispatch pages — including the "-" that stands in for a missing previous
+   status, which is a `<span>` inside a populated table, not an empty state.
+
+   This board's empty state wants a panel, and when it was given the same name
+   every one of those usages inherited the panel: that "-" rendered as a
+   full-width bordered box with 2.6rem of padding, sitting in the middle of the
+   Status history table. Hence `.bk-void`, a name nothing else claims. */
+
+/* An empty board is an invitation, not an apology. */
+.bk-void{margin-top:1.5rem;padding:2.6rem 1.5rem;text-align:center;
+  border:1px solid #242427;border-radius:14px;background:#121214}
+.bk-void h2{margin:0 0 .4rem}
+.bk-void p{margin:0 auto 1rem;max-width:44ch;font-size:.85rem;color:#ab8868}
+.bk-void .bk-btn{display:inline-block}
+
+/* Service and payment stop earning their own column before the route or the
+   stage does — those are the two the desk reads first. Each step also lowers the
+   sheet's floor so the columns that remain fit with less sideways scrolling. */
+@media (max-width:1280px){
+  .bk-h-svc,.bk-sheet td.bk-svc{display:none}
+  .bk-sheet{min-width:840px}
+}
+@media (max-width:1120px){
+  .bk-h-pay,.bk-sheet td.bk-h-pay{display:none}
+  .bk-sheet{min-width:700px}
+  /* Relax the two widest cells so the columns that remain fit without the
+     scroller becoming the answer. The route keeps priority over the guest name —
+     it is the longer and the more identifying of the two. */
+  .bk-guest{min-width:120px}
+  .bk-route{min-width:180px}
+}
+
+/* Below this the columns stop being columns.
+
+   A roster you have to drag sideways is worse than no roster, and the desk is
+   the person most likely to be checking the board from a phone between jobs. So
+   the table stops being a table: each booking becomes a card in the order a
+   person would say it — when, who, where, then the numbers, then the one action.
+   `order` reshuffles the cells because they are flex items here, and the DOM
+   order stays correct for screen readers and for anything reading the table as
+   data. */
+@media (max-width:860px){
+  /* Note: the scroller keeps overflow-x:auto on purpose. Card content no longer
+     overflows, so it never scrolls — but switching it to `visible` un-clips the
+     absolutely-positioned .bk-sr labels, which escape the scroller and drag the
+     whole page sideways again. `overflow-x:clip` states the intent without
+     creating a scroll container. */
+  .bk-scroll{overflow-x:clip}
+  .bk-sheet{display:block;min-width:0}
+  /* Collapsing thead to 1px is not enough on its own: the row inside still
+     generates at its natural ~365px and contributes that to the scroller's
+     scrollWidth, which then clips real content at the right edge. The row and
+     cells have to stop laying out as table parts too. */
+  .bk-sheet thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .bk-sheet thead tr,.bk-sheet thead th{display:block;width:auto;height:auto}
+  .bk-sheet tbody{display:block}
+  .bk-sheet tbody tr{display:flex;flex-wrap:wrap;align-items:center;
+    gap:.4rem .55rem;padding:.9rem .95rem;border-bottom:1px solid #1c1c1f}
+  .bk-sheet tbody tr:last-child{border-bottom:0}
+  .bk-sheet tbody tr:hover{background:#121214}
+  /* Cells are no longer rows, so they must not draw their own rules — that put
+     a stray divider between every block on the card. */
+  .bk-sheet tbody td{border-bottom:0;padding:0}
+
+  /* The day rule stays a rule, now between cards rather than between tables. */
+  .bk-sheet tbody .bk-dayrow{display:block;padding:0;border-bottom:1px solid #242427}
+  .bk-daybar{padding:1rem .95rem .6rem}
+
+  /* Every cell that carried a desktop `width:1%` (the shrink-to-fit trick) has to
+     hand that back here. Left in place it makes the box ~3px wide while the
+     nowrap text spills out of it and gets clipped — the total rendered as "$2". */
+  .bk-when,.bk-stage,.bk-svc,.bk-h-pay,.bk-h-num,.bk-h-act{width:auto}
+  .bk-when{order:1;flex:0 0 auto}
+  .bk-stage{order:2;flex:0 0 auto;margin-left:auto}
+  .bk-guest{order:3;flex:1 1 100%;min-width:0;margin-top:.15rem}
+  .bk-route{order:4;flex:1 1 100%;min-width:0;margin-top:.15rem;
+    padding-left:.7rem;border-left:2px solid #2a2a2b}
+  .bk-sheet td.bk-svc{display:block;order:5;flex:0 0 auto;margin:0}
+  .bk-sheet td.bk-h-pay{display:block;order:6;flex:0 0 auto}
+  .bk-h-num{order:7;flex:0 0 auto;margin-left:auto;font-size:.85rem;color:#f3d4a6}
+  /* Labels come back on a card: an unlabelled glyph is fine at desk distance
+     on a wide sheet, but on a phone the row is read by someone standing up. The
+     two buttons split the width so both stay easy to hit. */
+  .bk-h-act{order:8;flex:1 1 100%;display:flex;gap:.5rem;margin-top:.35rem}
+  .bk-sheet td.bk-h-act .bk-btn{flex:1 1 0;width:auto;height:auto;
+    padding:.55rem .9rem;font-size:.8rem}
+  .bk-h-act .bk-btn+.bk-btn{margin-left:0}
+  .bk-btn-ico{width:auto;height:auto;gap:.45rem}
+  .bk-btn-t{display:inline}
+
+  /* The wider breakpoints dropped these two columns to save width. On a card
+     there is width to spare, and the desk still wants to know what was paid and
+     what kind of job it is — so they come back, inline in the numbers row. */
+
+  /* The connector was the signature; on a card it reads better as a short rule
+     in the left gutter, so the route keeps its direction without the arrow. */
+  .bk-rl{display:none}
+
+  /* Search stops being a wide field beside a small button and becomes the two
+     stacked, thumb-sized controls it needs to be on a phone. */
+  .bk-find{gap:.5rem}
+  .bk-q{max-width:none;width:100%}
+  .bk-go{width:100%;padding-top:.6rem;padding-bottom:.6rem}
+  .bk-find .bk-btn-line{width:100%;text-align:center}
+}
+
+/* ==========================================================================
+   Dashboard — "Latest bookings".
+
+   The board (admin/bookings.php) is the roster. This panel is not a smaller
+   roster; it answers a different question, "what landed since I last looked".
+   So it is capped at ten arrivals instead of growing with the business, and the
+   ten it shows carry the one number the board cannot: how long each has been
+   sitting here waiting on the office. The board sorts by when the car is
+   needed, so age would be meaningless there — on an arrival list it is the point.
+
+   Table markup reuses `.data` rather than a parallel style, so this panel stays
+   consistent with the rest of the console and adds no second set of table rules.
+=========================================================================== */
+.dash-latest-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.dash-latest-sub{margin:.15rem 0 0;font-size:.72rem;color:#8a8a8a}
+
+/* Grid items default to `min-width:auto`, which means a wide table inside one
+   forces its whole track open and drags the second column off-screen — the
+   table scrolls inside its own card instead, where `.table-wrap` already
+   provides overflow-x:auto. The track also stacks below 1280 rather than 1024:
+   with the admin rail taking 252px, a `1fr` column beside a fixed 320px leaves
+   this panel about 350px, which is not enough for any honest table. */
+.dash-cols>*{min-width:0}
+
+/* The View all button replaces a bare underline that sat where nobody looks.
+   It carries the total, because the reason to press it is "how many are there". */
+.dash-more{display:inline-flex;align-items:center;gap:.45rem;
+  padding:.5rem .95rem;border:1px solid #C8A96B;border-radius:999px;
+  font-size:.78rem;color:#F3D4A6;text-decoration:none;
+  transition:background-color .16s,border-color .16s}
+.dash-more i{font-size:.7rem}
+.dash-more:hover{background:rgba(217,185,120,.12)}
+.dash-more:focus-visible{outline:2px solid #F3D4A6;outline-offset:2px}
+
+.dash-sheet time,.dash-time{display:block;font-family:var(--st-mono);font-size:.82rem;color:#f5f5f3}
+.dash-date{display:block;font-size:.68rem;color:#8a8a8a;letter-spacing:.02em}
+/* The booking number sits under the pickup. The board spends its space on the
+   route because it is a roster you scan for a journey; this is a glance list you
+   scan for "which job", and a reference you can read off the screen is what the
+   desk actually calls across the room with. */
+.dash-ref{display:block;font-family:var(--st-mono);font-size:.64rem;color:#7d7d82;
+  letter-spacing:.03em;text-decoration:none;margin-top:.1rem}
+.dash-ref:hover{color:#f3d4a6;text-decoration:underline}
+.dash-when{white-space:nowrap}
+.dash-guest{min-width:130px}
+.dash-name{display:block;font-size:.82rem;color:#f5f5f3;text-decoration:none}
+.dash-name:hover{color:#f3d4a6;text-decoration:underline}
+.dash-car{display:block;font-size:.68rem;color:#7d7d82;margin-top:.1rem}
+.dash-h-num{text-align:right;white-space:nowrap;color:#f5f5f3}
+
+/* Waiting: a quiet mono token, not a badge. It only appears for stages where
+   the office owes something, so an empty cell is the good outcome. At three
+   days it turns amber — a quote that has sat a weekend is the thing this panel
+   exists to surface. */
+.dash-wait{font-family:var(--st-mono);font-size:.72rem;color:#8a8a8a;letter-spacing:.02em}
+.dash-wait.is-old{color:#e8a33d}
+
+/* Jump-to strip. Buttons, not links, because these are places you go to do a
+   task rather than documents you are reading. */
+.dash-jump{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-top:1.15rem}
+.dash-jump-label{font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;
+  color:#6f6f72;margin-right:.2rem}
+.dash-jump-btn{display:inline-flex;align-items:center;gap:.4rem;
+  padding:.42rem .8rem;border:1px solid #2a2a2b;border-radius:999px;
+  font-size:.76rem;color:#ab8868;text-decoration:none;
+  transition:border-color .16s,color .16s,background-color .16s}
+.dash-jump-btn i{font-size:.78rem}
+.dash-jump-btn:hover{border-color:#c8a96b;color:#f3d4a6;background:rgba(217,185,120,.07)}
+.dash-jump-btn:focus-visible{outline:2px solid #f3d4a6;outline-offset:2px}
+
+/* The waiting column is the one that can go: it is empty for every booking the
+   car has already got, and an empty column on a phone is dead width. The total
+   never goes — a glance list that cannot say what a job is worth is not a
+   glance. */
+@media (max-width:620px){
+  .dash-h-wait,.dash-sheet td.dash-h-wait{display:none}
+  .dash-sheet{font-size:.76rem}
+  /* With that column gone the rest fit comfortably — but only once the
+     generous default cell padding is trimmed. */
+  .dash-sheet th,.dash-sheet td{padding:.5rem .35rem}
+  .dash-guest{min-width:0}
+}
+
+/* Phone widths. The stage pill is the widest thing left in the row, and on a
+   narrow card it can afford to be quieter; trimming the cell padding and the
+   pill type is what finally lets four columns fit without the card scrolling
+   sideways. */
+@media (max-width:430px){
+  .dash-sheet{font-size:.74rem}
+  .dash-sheet th,.dash-sheet td{padding:.45rem .25rem}
+  .dash-sheet .pill{font-size:.68rem;padding:.2rem .45rem}
+  .dash-time{font-size:.78rem}
+  .dash-h-num{font-size:.76rem}
+}
+@media (prefers-reduced-motion:reduce){
+  .dash-more,.dash-jump-btn{transition:none}
+}

@@ -51,7 +51,29 @@ $attention = [
     ['n' => (int)$pdo->query('SELECT COUNT(*) c FROM drivers WHERE status = "pending"')->fetch()['c'], 'label' => 'Drivers to activate', 'url' => 'admin/drivers.php?status=pending'],
     ['n' => (int)$pdo->query('SELECT COUNT(*) c FROM driver_payouts WHERE status = "requested"')->fetch()['c'], 'label' => 'Payout requests', 'url' => 'admin/payouts.php'],
 ];
-$recent = $pdo->query('SELECT booking_number, pickup_date, service_type, payment_status, total FROM bookings ORDER BY id DESC LIMIT 8')->fetchAll();
+/*
+  The dashboard asks one question — what landed since I last looked — so this
+  panel is capped at ten arrivals instead of growing with the business, and the
+  ten it shows carry the one measure the bookings board cannot give: how long
+  each booking has been sitting here waiting on the desk. The board sorts by when
+  the car is needed; this sorts by arrival, and age only means something on an
+  arrival list.
+*/
+$recent = $pdo->query('SELECT b.booking_number, b.pickup_date, b.pickup_time, b.pickup_location, b.destination_location, b.service_type, b.status, b.payment_status, b.total, b.created_at, c.name AS cname, b.guest_name, v.make, v.model FROM bookings b LEFT JOIN customers c ON c.id = b.customer_id LEFT JOIN vehicles v ON v.id = b.vehicle_id ORDER BY b.id DESC LIMIT 10')->fetchAll();
+$recentTotal = (int)$pdo->query('SELECT COUNT(*) c FROM bookings')->fetch()['c'];
+$recentMore = $recentTotal > count($recent);
+
+/* Stages where the ball is in the office's court rather than the driver's. */
+$onTheDesk = ['booking_received', 'awaiting_pricing', 'pricing_finalized', 'pending_payment', 'payment_failed'];
+$waitingFor = static function (array $r) use ($onTheDesk): array {
+    if (!in_array((string)$r['status'], $onTheDesk, true)) return [false, '', 0];
+    $mins = max(1, (int)floor((time() - strtotime((string)$r['created_at'])) / 60));
+    if ($mins < 60) return [true, $mins . 'm', $mins];
+    $h = (int)floor($mins / 60);
+    if ($h < 48) return [true, $h . 'h', $mins];
+    $d = (int)floor($h / 24);
+    return [true, $d . 'd', $mins];
+};
 ob_start();
 ?>
 <!-- Greeting bar -->
@@ -70,6 +92,24 @@ ob_start();
     <span class="w-10 h-10 rounded-full bg-[#D9B978] text-[#0A0A0C] font-bold inline-flex items-center justify-center" aria-hidden="true"><?= e($initial) ?></span>
   </div>
 </div>
+
+<!-- Jump to: the desks that get opened between phone calls. The sidebar
+     already lists everything, so this is deliberately the short list a person
+     reaches for mid-conversation, not a second navigation to keep in sync. -->
+<nav class="dash-jump" aria-label="Jump to a section">
+  <span class="dash-jump-label">Jump to</span>
+  <?php foreach ([
+    ['Dispatch', 'fa-paper-plane', 'admin/dispatch.php'],
+    ['Customers', 'fa-users', 'admin/customers.php'],
+    ['Drivers', 'fa-id-card', 'admin/drivers.php'],
+    ['Pricing', 'fa-tag', 'admin/pricing.php'],
+    ['Payments', 'fa-credit-card', 'admin/payments.php'],
+    ['Payouts', 'fa-money-bill-wave', 'admin/payouts.php'],
+    ['Reports', 'fa-chart-line', 'admin/reports.php'],
+  ] as [$jumpLabel, $jumpIcon, $jumpHref]): ?>
+    <a class="dash-jump-btn" href="<?= url($jumpHref) ?>"><i class="fa-solid <?= e($jumpIcon) ?>" aria-hidden="true"></i><?= e($jumpLabel) ?></a>
+  <?php endforeach; ?>
+</nav>
 
 <!-- Stat cards -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -140,19 +180,51 @@ ob_start();
   <?php endif; ?>
 </div>
 
-<div class="grid lg:grid-cols-[1fr_320px] gap-4 mt-4 items-start">
+<div class="dash-cols grid xl:grid-cols-[1fr_320px] gap-4 mt-4 items-start">
   <!-- Recent bookings -->
   <div class="card rounded-2xl p-5">
-    <div class="flex items-center justify-between">
-      <h2 class="font-display text-2xl">Latest bookings</h2>
-      <a href="<?= url('admin/bookings.php') ?>" class="text-xs underline">View all</a>
+    <div class="dash-latest-head">
+      <div>
+        <h2 class="font-display text-2xl">Latest bookings</h2>
+        <p class="dash-latest-sub">The <?= count($recent) ?> most recent<?= $recentMore ? ' of ' . $recentTotal : '' ?></p>
+      </div>
+      <?php if ($recentMore): ?>
+        <a href="<?= url('admin/bookings.php') ?>" class="dash-more">View all <?= $recentTotal ?> bookings<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <?php endif; ?>
     </div>
-    <div class="table-wrap mt-2"><table class="data"><thead><tr><th>Number</th><th>Date</th><th>Service</th><th>Payment</th><th>Total</th></tr></thead><tbody>
-    <?php foreach ($recent as $r): ?><tr>
-      <td><a class="underline" href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>"><?= e($r['booking_number']) ?></a></td>
-      <td><?= e($r['pickup_date']) ?></td><td><?= e($r['service_type']) ?></td><td><?= e($r['payment_status']) ?></td><td class="tabular">$<?= money($r['total']) ?></td>
-    </tr><?php endforeach; ?>
-    <?php if (!$recent): ?><tr><td colspan="5" class="text-xs">No bookings yet.</td></tr><?php endif; ?>
+    <div class="table-wrap mt-2"><table class="data dash-sheet"><thead><tr>
+      <th>Pickup</th><th>Guest</th><th class="dash-h-num">Total</th><th>Stage</th><th class="dash-h-wait">Waiting</th>
+    </tr></thead><tbody>
+    <?php foreach ($recent as $r):
+      $isWaiting = $waitingFor($r);
+      $rid = (string)$r['booking_number'];
+      $guest = trim((string)($r['cname'] ?: $r['guest_name']));
+      if ($guest === '') $guest = 'Guest booking';
+      $car = trim(((string)($r['make'] ?? '')) . ' ' . ((string)($r['model'] ?? '')));
+      $svc = trim((string)$r['service_type']);
+      $time = substr((string)$r['pickup_time'], 0, 5);
+      if ($time === '' || $time === '00:00') $time = '';
+      $m = (int)$isWaiting[2];
+      $spoken = $isWaiting[2] < 60
+        ? $isWaiting[2] . ' minute' . ($isWaiting[2] === 1 ? '' : 's')
+        : ($m < 2880 ? intdiv($m, 60) . ' hour' . (intdiv($m, 60) === 1 ? '' : 's') : intdiv($m, 1440) . ' day' . (intdiv($m, 1440) === 1 ? '' : 's'));
+    ?>
+    <tr>
+      <td class="tabular dash-when">
+        <?php if ($time !== ''): ?><b class="dash-time"><?= e($time) ?></b><?php endif; ?>
+        <span class="dash-date"><?= e(date('D j M', strtotime((string)$r['pickup_date']))) ?></span>
+        <a class="dash-ref" href="<?= url('admin/bookings.php?action=view&n=' . $rid) ?>"><?= e($rid) ?></a>
+      </td>
+      <td class="dash-guest">
+        <a class="dash-name" href="<?= url('admin/bookings.php?action=view&n=' . $rid) ?>"><?= e($guest) ?></a>
+        <?php if ($car !== ''): ?><span class="dash-car"><?= e($car) ?></span><?php endif; ?>
+      </td>
+      <td class="dash-h-num tabular">$<?= money($r['total']) ?></td>
+      <td><?= status_pill((string)$r['status']) ?></td>
+      <td class="dash-h-wait"><?php if ($isWaiting[0]): ?><span class="dash-wait<?= $isWaiting[2] >= 4320 ? ' is-old' : '' ?>" title="Waiting <?= e($spoken) ?> since this booking arrived"><?= e($isWaiting[1]) ?></span><?php endif; ?></td>
+    </tr>
+    <?php endforeach; ?>
+    <?php if (!$recent): ?><tr><td colspan="5" class="text-xs">No bookings yet. <a class="underline" href="<?= url('admin/bookings.php?action=create') ?>">Create the first one</a>.</td></tr><?php endif; ?>
     </tbody></table></div>
   </div>
   <!-- Needs attention -->

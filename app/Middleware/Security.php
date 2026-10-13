@@ -45,6 +45,18 @@ function secure_upload(array $file, string $subdir, array $allowed = ['jpg','jpe
     if (!in_array($ext, $allowed, true)) {
         return [null, 'File type not allowed.'];
     }
+    return store_validated_upload($file, $subdir, $allowed, $allowedMime);
+}
+
+/**
+ * Validation and storage shared by real uploads and camera captures.
+ *
+ * Camera captures never pass through $_FILES - the bytes come from a canvas in
+ * the browser - but they must be judged by exactly the same rules as a file the
+ * driver picked off their phone, or the camera route becomes the soft one.
+ */
+function store_validated_upload(array $file, string $subdir, array $allowed, array $allowedMime): array
+{
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($file['tmp_name']);
     // The extension is the author's claim; the bytes are the truth.
@@ -53,12 +65,59 @@ function secure_upload(array $file, string $subdir, array $allowed = ['jpg','jpe
     }
     $dir = APP_ROOT . '/storage/uploads/' . trim($subdir, '/');
     if (!is_dir($dir)) mkdir($dir, 0755, true);
-    $name = bin2hex(random_bytes(16)) . '.' . $ext;
+    $name = bin2hex(random_bytes(16)) . '.' . strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $dest = $dir . '/' . $name;
-    if (!move_uploaded_file($file['tmp_name'], $dest)) {
+    // move_uploaded_file is the right primitive for a browser upload and refuses
+    // anything else. A capture was written by us into a temp file we own, so it
+    // moves with rename() - never with a path the client could influence.
+    $moved = is_uploaded_file($file['tmp_name'])
+        ? move_uploaded_file($file['tmp_name'], $dest)
+        : rename($file['tmp_name'], $dest);
+    if (!$moved) {
         return [null, 'Could not store file.'];
     }
     return ['storage/uploads/' . trim($subdir, '/') . '/' . $name, null];
+}
+
+/**
+ * A photo taken with the in-page camera, posted as a data URL.
+ *
+ * decode + size cap + the same extension and finfo checks as secure_upload.
+ * Returns the same [path, error] pair so callers do not branch on where the
+ * image came from.
+ */
+function secure_capture(?string $dataUrl, string $subdir, array $allowed, int $maxBytes, array $allowedMime): array
+{
+    $raw = trim((string)$dataUrl);
+    if ($raw === '') return [null, 'No photo was taken.'];
+    if (!preg_match('#^data:image/(jpeg|png|webp);base64,#i', $raw, $m)) {
+        return [null, 'That photo came through in an unexpected format.'];
+    }
+    $bin = base64_decode(substr($raw, strlen($m[0])), true);
+    if ($bin === false || $bin === '') return [null, 'That photo could not be read.'];
+    if (strlen($bin) > $maxBytes) {
+        return [null, 'That photo is ' . round(strlen($bin) / 1048576, 1) . 'MB. The limit is ' . round($maxBytes / 1048576, 1) . 'MB.'];
+    }
+
+    $ext = strtolower($m[1]);
+    if ($ext === 'jpeg') $ext = 'jpg';
+    if (!in_array($ext, $allowed, true)) return [null, 'File type not allowed.'];
+
+    $tmp = tempnam(sys_get_temp_dir(), 'drvcap_');
+    if ($tmp === false) return [null, 'Could not store file.'];
+    if (file_put_contents($tmp, $bin) !== strlen($bin)) {
+        @unlink($tmp);
+        return [null, 'Could not store file.'];
+    }
+    $out = store_validated_upload(
+        ['tmp_name' => $tmp, 'size' => strlen($bin), 'error' => UPLOAD_ERR_OK, 'name' => 'capture.' . $ext],
+        $subdir,
+        $allowed,
+        $allowedMime
+    );
+    // Any failure leaves the temp file behind; clean it up rather than leaking it.
+    if ($out[1] !== null && is_file($tmp)) @unlink($tmp);
+    return $out;
 }
 
 /** Issue a password-reset token (stores only hash, 30-min TTL, single-use). Returns raw token. */

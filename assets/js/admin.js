@@ -33,6 +33,99 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ---- realtime field saving ----------------------------------------------
+  // The desk corrects a record while the chauffeur is on the phone about it, so
+  // every plain field posts itself the moment typing stops. Saving used to mean
+  // finding the button, which is how a mistyped number stayed wrong for a week.
+  // The Save button stays for the note, which is the one field a rich-text
+  // editor owns and there is nothing sensible to autosave key-by-key.
+  const liveTimers = new WeakMap();
+
+  document.querySelectorAll('[data-live]').forEach((input) => {
+    const dlg = input.closest('dialog');
+    const csrf = dlg && dlg.querySelector('input[name="_csrf"]');
+    const idField = dlg && dlg.querySelector('input[name="id"]');
+    if (!csrf || !idField) return;
+
+    const field = input.dataset.live;
+    const cell = input.closest('.bk-cell') || input.parentElement;
+
+    // One marker per field, reused: setting text again is cheaper than swapping
+    // nodes, and it keeps the saved/bad state on a single element.
+    const say = (state, text) => {
+      let el = cell.querySelector('.live-say');
+      if (!el) {
+        el = document.createElement('span');
+        el.className = 'live-say';
+        cell.appendChild(el);
+      }
+      el.textContent = text || '';
+      el.hidden = !text;
+      el.dataset.state = state || '';
+      if (state === 'ok' || state === 'wait') {
+        clearTimeout(el._hide);
+        if (state === 'ok') el._hide = setTimeout(() => { el.hidden = true; }, 2400);
+      }
+    };
+
+    const save = async () => {
+      const body = new URLSearchParams();
+      body.set('_csrf', csrf.value);
+      body.set('op', 'field_edit');
+      body.set('id', idField.value);
+      body.set('field', field);
+      body.set('value', input.value);
+      say('wait', 'Saving…');
+      let data;
+      try {
+        const res = await fetch(window.location.pathname + window.location.search, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'fetch' },
+          body,
+          credentials: 'same-origin',
+        });
+        data = await res.json();
+      } catch (err) {
+        say('bad', 'Could not reach the server.');
+        return;
+      }
+      if (!data || !data.ok) {
+        say('bad', (data && data.error) || 'Not saved.');
+        return;
+      }
+      // Unchanged values answer changed:false. Say nothing and, deliberately,
+      // leave whatever is already on screen alone - clearing here erased the
+      // "Saved" a real save had just put there, because a field fires both a
+      // change and a trailing input and the second one finds nothing to do.
+      if (!data.changed) return;
+      say('ok', 'Saved');
+
+      if (field === 'license_expiry') {
+        // The docket countdown is derived from this field, so it moves with it
+        // instead of waiting for someone to reload the page.
+        const doc = dlg.querySelector('[id^="dkdoc"]');
+        const fill = dlg.querySelector('[id^="dkfill"]');
+        const days = dlg.querySelector('[id^="dkdays"]');
+        if (doc) doc.className = 'fl-doc ' + (data.sev || '');
+        if (fill) fill.style.width = (data.pct || 0) + '%';
+        if (days) days.textContent = data.days_shown || 'missing';
+      }
+      if (field === 'name') {
+        const title = dlg.querySelector('.md-title');
+        if (title && data.shown) title.textContent = data.shown;
+      }
+    };
+
+    const queue = () => {
+      clearTimeout(liveTimers.get(input));
+      liveTimers.set(input, setTimeout(save, 700));
+    };
+    input.addEventListener('input', queue);
+    // A date picker and a select commit as soon as they are chosen; waiting for
+    // the debounce made the confirmation feel like it had missed the change.
+    input.addEventListener('change', () => { clearTimeout(liveTimers.get(input)); save(); });
+  });
+
   // ---- modal dialogs ------------------------------------------------------
   // <dialog>.showModal() gives focus trapping, Escape and the backdrop for free.
   const openModal = (dlg) => {

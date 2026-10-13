@@ -222,7 +222,38 @@ function status_pill(string $status): string
     elseif (in_array($status, $gold, true)) $cls = 'pill-gold';
     elseif (in_array($status, $blue, true)) $cls = 'pill-blue';
     else $cls = '';
-    return '<span class="pill ' . $cls . '">' . e($status) . '</span>';
+/*
+      Speak the operator's language, not the database's. `at_pickup_location` and
+      `awaiting_pricing` were going onto the office screen inside pills, because a
+      pill that prettified its own argument would have had to know about vehicles
+      and customers too.
+
+      The wording is deliberately the office's, not the driver's: to a driver
+      `awaiting_pricing` and `confirmed` are both simply "At the office" — nothing
+      to do. To whoever is working the booking they are opposite ends of the desk's
+      own work, so they say so. Road states are shared, since both sides name them
+      the same way. Anything unmapped falls back to plain title case.
+    */
+    static $office = [
+        'pending_payment' => 'Awaiting payment',
+        'payment_failed' => 'Payment problem',
+        'awaiting_pricing' => 'Awaiting pricing',
+        'pricing_finalized' => 'Price sent',
+        'booking_received' => 'New request',
+        'confirmed' => 'Confirmed',
+        'assigned' => 'Assigned',
+        'on_the_way' => 'On the way',
+        'arrived' => 'Arrived',
+        'at_pickup_location' => 'At the pickup',
+        'on_board' => 'On board',
+        'finish' => 'Finished',
+        'cancelled' => 'Cancelled',
+        'refunded' => 'Refunded',
+    ];
+    $label = $office[$status] ?? '';
+    if ($label === '' && class_exists('DispatchLabels')) $label = DispatchLabels::step($status)['label'] ?? '';
+    if ($label === '') $label = ucwords(str_replace('_', ' ', trim($status)));
+    return '<span class="pill ' . $cls . '">' . e($label) . '</span>';
 }
 
 /**

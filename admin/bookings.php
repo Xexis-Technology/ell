@@ -379,50 +379,255 @@ if ($action === 'create') {
 } else {
     $q = trim($_GET['q'] ?? '');
     $status = trim($_GET['status'] ?? '');
-    $sql = 'SELECT booking_number, pickup_date, service_type, status, payment_status, total FROM bookings WHERE 1=1';
-    $params = [];
+
+    /*
+      The desk's own groupings. A filter chip is only worth having if clicking it
+      answers "how much of this is there?", so every group names the raw statuses
+      it stands for and carries a real count. Between them they cover all fourteen
+      booking statuses, so no separate dropdown is needed. The old keys still work
+      as links, which matters because they are already in people's bookmarks.
+    */
+    $groups = [
+        '' => ['label' => 'All bookings', 'states' => []],
+        'awaiting_pricing' => ['label' => 'Needs pricing', 'states' => ['awaiting_pricing']],
+        'pending_payment' => ['label' => 'Awaiting payment', 'states' => ['pricing_finalized', 'pending_payment', 'payment_failed']],
+        'confirmed' => ['label' => 'Ready to dispatch', 'states' => ['booking_received', 'confirmed']],
+        'assigned' => ['label' => 'Dispatched', 'states' => ['assigned']],
+        'road' => ['label' => 'On the road', 'states' => ['on_the_way', 'arrived', 'at_pickup_location', 'on_board']],
+        'finish' => ['label' => 'Finished', 'states' => ['finish']],
+        'cancelled' => ['label' => 'Cancelled', 'states' => ['cancelled', 'refunded']],
+    ];
+
+    $searchSql = '';
+    $searchParams = [];
     if ($q !== '') {
-        $sql .= ' AND (booking_number LIKE ? OR pickup_location LIKE ? OR destination_location LIKE ?)';
-        $params[] = "%$q%";
-        $params[] = "%$q%";
-        $params[] = "%$q%";
+        $searchSql = ' AND (b.booking_number LIKE ? OR b.pickup_location LIKE ? OR b.destination_location LIKE ? OR c.name LIKE ? OR b.guest_name LIKE ?)';
+        for ($i = 0; $i < 5; $i++) $searchParams[] = "%$q%";
     }
-    if ($status !== '') {
-        $sql .= ' AND status = ?';
-        $params[] = $status;
+
+    if (isset($groups[$status])) {
+        $activeGroup = $status;
+        $states = $groups[$status]['states'];
+    } elseif (in_array($status, BookingService::VALID_STATUSES, true)) {
+        $activeGroup = '';
+        $states = [$status];
+    } else {
+        $status = '';
+        $activeGroup = '';
+        $states = [];
     }
-    $sql .= ' ORDER BY id DESC LIMIT 200';
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
+    $statusSql = '';
+    if ($states) {
+        $statusSql = ' AND b.status IN (' . implode(',', array_fill(0, count($states), '?')) . ')';
+    }
+
+    $from = ' FROM bookings b LEFT JOIN customers c ON c.id = b.customer_id LEFT JOIN vehicles v ON v.id = b.vehicle_id';
+
+    /*
+      A booking is a movement in time, so the board is ordered by when the car is
+      needed, not by when someone typed it in. The guest, the road and the
+      assigned chauffeur were all missing from the old row, and a route is the one
+      thing anyone working the desk actually reads first.
+    */
+    $st = $pdo->prepare('SELECT b.id, b.booking_number, b.pickup_date, b.pickup_time, b.pickup_location, b.destination_location, b.guest_name, b.service_type, b.status, b.payment_status, b.total, c.name AS cname, v.make, v.model, v.plate, (SELECT dr.name FROM dispatches d JOIN drivers dr ON dr.id = d.driver_id WHERE d.booking_id = b.id ORDER BY d.id DESC LIMIT 1) AS driver_name' . $from . ' WHERE 1=1' . $searchSql . $statusSql . ' ORDER BY b.pickup_date DESC, b.pickup_time DESC, b.id DESC LIMIT 200');
+    $st->execute(array_merge($searchParams, $states));
     $rows = $st->fetchAll();
+
+    // Chip counts honour the search but ignore the status filter, so a chip shows
+    // what you would get if you clicked it rather than the size of the current result.
+    $st = $pdo->prepare('SELECT b.status, COUNT(*) AS c' . $from . ' WHERE 1=1' . $searchSql . ' GROUP BY b.status');
+    $st->execute($searchParams);
+    $byState = [];
+    foreach ($st->fetchAll() as $cr) $byState[$cr['status']] = (int)$cr['c'];
+    $chipCount = [];
+    foreach ($groups as $k => $g) {
+        $chipCount[$k] = $g['states'] ? array_sum(array_intersect_key($byState, array_flip($g['states']))) : array_sum($byState);
+    }
+
+    /*
+      Four bands, because "coming up" is not a useful label when it stretches
+      seventeen months — a booking in 2027 is not next, it is just later. The desk
+      navigates by Today, Tomorrow, Later and Earlier, and each band is its own
+      sheet so the day rules can close at the band.
+    */
+    $todayD = date('Y-m-d');
+    $tomD = date('Y-m-d', strtotime('+1 day'));
+    $bands = ['Today' => [], 'Tomorrow' => [], 'Later' => [], 'Earlier' => []];
+    foreach ($rows as $r) {
+        $d = (string)$r['pickup_date'];
+        if ($d === $todayD) $k = 'Today';
+        elseif ($d === $tomD) $k = 'Tomorrow';
+        elseif ($d > $tomD) $k = 'Later';
+        else $k = 'Earlier';
+        $bands[$k][$d][] = $r;
+    }
+    // A day reads top-down in the order it happened; only the order of the days
+    // themselves differs between the forward-looking bands and history. The query
+    // arrives newest-first, so the forward bands still need sorting.
+    foreach ($bands as $k => $days) {
+        ksort($days);
+        foreach ($days as $d => $list) {
+            usort($list, static fn($a, $z) => strcmp((string)$a['pickup_time'], (string)$z['pickup_time']));
+            $days[$d] = $list;
+        }
+        $bands[$k] = $k === 'Earlier' ? array_reverse($days, true) : $days;
+    }
+    $bands = array_filter($bands, static fn($days): bool => (bool)$days);
+
+    $dayLabel = static function (string $iso, string $band): string {
+        if ($iso === '') return 'No pickup date';
+        if ($band === 'Today') return 'Today';
+        if ($band === 'Tomorrow') return 'Tomorrow';
+        return date('D j M Y', strtotime($iso));
+    };
+
+    // Keyed to the enum the bookings table actually stores, so an unfamiliar
+    // value still reads as words rather than as a code.
+    $serviceMap = [
+        'point_to_point' => 'Point to point',
+        'hourly' => 'Hourly charter',
+        'airport' => 'Airport',
+    ];
+    $canDispatch = static fn(string $s): bool => in_array($s, ['confirmed', 'assigned', 'booking_received'], true);
     ?>
     <?php if ($msg): ?><div class="alert alert-ok"><?= e($msg) ?></div><?php endif; ?>
-    <div class="page-head"><div><p class="eyebrow">Operations</p><h1 class="font-display text-3xl mt-1">Bookings</h1></div><a href="<?= url('admin/bookings.php?action=create') ?>" class="btn-gold rounded-full text-sm px-5 py-2.5 inline-flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-[#0A0A0C] text-[#D9B978] inline-flex items-center justify-center font-bold" aria-hidden="true">+</span> New booking</a></div>
+
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1 class="font-display text-3xl mt-1">Bookings</h1>
+      </div>
+      <a href="<?= url('admin/bookings.php?action=create') ?>" class="btn-gold rounded-full text-sm px-5 py-2.5 inline-flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-[#0A0A0C] text-[#D9B978] inline-flex items-center justify-center font-bold" aria-hidden="true">+</span> New booking</a>
+    </div>
     <?php
     $listCount = count($rows);
     $listPaid = 0.0;
     foreach ($rows as $lr) { if ($lr['payment_status'] === 'paid') $listPaid += (float)$lr['total']; }
     ?>
-    <p class="tabular text-xs text-[#AB8868] mt-2"><?= $listCount ?> booking<?= $listCount === 1 ? '' : 's' ?><?= $status !== '' ? ' · ' . e($status) : '' ?><?= $q !== '' ? ' · “' . e($q) . '”' : '' ?> · $<?= money($listPaid) ?> paid in view</p>
     <div class="card rounded-2xl p-4 mt-3">
-      <form method="get" class="flex flex-wrap items-center gap-2">
+      <form method="get" class="bk-find">
         <input type="hidden" name="action" value="list">
-        <input name="q" class="input rounded-full" style="max-width:220px" placeholder="Number or route…" value="<?= e($q) ?>" aria-label="Search">
-        <select name="status" class="input rounded-full" style="max-width:190px" aria-label="Status"><option value="">All statuses</option><?php foreach (BookingService::VALID_STATUSES as $s): ?><option <?= $status === $s ? 'selected' : '' ?>><?= e($s) ?></option><?php endforeach; ?></select>
-        <button class="btn-gold rounded-full text-sm px-5">Filter</button>
+        <input name="q" class="input rounded-full bk-q" placeholder="Number, route or guest…" value="<?= e($q) ?>" aria-label="Search bookings">
+        <button class="btn-gold rounded-full text-sm px-5 bk-go">Search</button>
+        <?php if ($q !== ''): ?><a href="<?= url('admin/bookings.php?action=list') ?>" class="bk-btn bk-btn-line">Clear</a><?php endif; ?>
       </form>
-      <div class="flex flex-wrap gap-1.5 mt-3">
-        <?php foreach (['' => 'All', 'awaiting_pricing' => 'Awaiting pricing', 'pending_payment' => 'Unpaid', 'confirmed' => 'Confirmed', 'assigned' => 'Dispatched', 'finish' => 'Finished', 'cancelled' => 'Cancelled'] as $sv => $sl): ?>
-        <a href="<?= url('admin/bookings.php?action=list' . ($sv !== '' ? '&status=' . $sv : '') . ($q !== '' ? '&q=' . urlencode($q) : '')) ?>" class="tabular text-[11px] px-3 py-1.5 rounded-full <?= $status === $sv ? 'bg-[#D9B978] text-[#0A0A0C] font-semibold' : 'border border-[#3a3a3d] text-[#AB8868] hover:text-[#F3D4A6]' ?>"><?= e($sl) ?></a>
+      <nav class="bk-chips" aria-label="Filter by stage">
+        <?php foreach ($groups as $k => $g):
+          $on = ($activeGroup === $k);
+          $href = url('admin/bookings.php?action=list' . ($k !== '' ? '&status=' . $k : '') . ($q !== '' ? '&q=' . urlencode($q) : ''));
+        ?>
+          <a href="<?= $href ?>" class="bk-chip<?= $on ? ' is-on' : '' ?>"<?= $on ? ' aria-current="page"' : '' ?>><span><?= e($g['label']) ?></span><b class="tabular"><?= $chipCount[$k] ?></b></a>
         <?php endforeach; ?>
-      </div>
+      </nav>
     </div>
-    <div class="table-wrap card rounded-2xl mt-3"><table class="data"><thead><tr><th>Number</th><th>Date</th><th>Service</th><th>Status</th><th>Payment</th><th class="text-right">Total</th><th class="text-right">Actions</th></tr></thead><tbody>
-    <?php foreach ($rows as $r): ?><tr><td><a class="underline tabular font-semibold" href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>"><?= e($r['booking_number']) ?></a></td><td class="tabular"><?= e($r['pickup_date']) ?></td><td><?= e($r['service_type']) ?></td><td><?= status_pill($r['status']) ?></td><td><?= status_pill($r['payment_status']) ?></td><td class="tabular text-right">$<?= money($r['total']) ?></td>
-    <td class="text-right whitespace-nowrap"><a href="<?= url('admin/bookings.php?action=view&n=' . $r['booking_number']) ?>" class="btn-gold rounded-full text-xs font-semibold px-4 py-1.5 inline-block">View</a>
-    <?php if (in_array($r['status'], ['confirmed', 'assigned', 'booking_received'], true)): ?> <a href="<?= url('admin/dispatch.php') ?>" class="rounded-full text-xs font-semibold px-4 py-1.5 inline-block border border-[#C8A96B] text-[#F3D4A6] hover:bg-[#D9B978]/10">Dispatch</a><?php endif; ?></td></tr><?php endforeach; ?>
-    <?php if (!$rows): ?><tr><td colspan="7" class="text-xs">No bookings match. <a class="underline" href="<?= url('admin/bookings.php?action=create') ?>">Create one</a>.</td></tr><?php endif; ?>
-    </tbody></table></div>
+
+    <?php if (!$bands): ?>
+      <div class="bk-void">
+        <h2 class="font-display text-2xl">Nothing on the board</h2>
+        <?php if ($q !== ''): ?>
+          <p>No booking matches “<?= e($q) ?>”. Try a booking number, a place, or a guest's name.</p>
+          <a href="<?= url('admin/bookings.php?action=list') ?>" class="bk-btn bk-btn-line">Show all bookings</a>
+        <?php elseif ($activeGroup !== ''): ?>
+          <p>Nothing is at this stage right now. That is the board doing its job.</p>
+          <a href="<?= url('admin/bookings.php?action=list' . ($q !== '' ? '&q=' . urlencode($q) : '')) ?>" class="bk-btn bk-btn-line">Show all bookings</a>
+        <?php else: ?>
+          <p>When a booking comes in it lands here by the day the car is needed, soonest first.</p>
+          <a href="<?= url('admin/bookings.php?action=create') ?>" class="btn-gold rounded-full text-sm px-5 py-2.5 inline-block">Create the first booking</a>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
+    <?php foreach ($bands as $band => $days): ?>
+      <?php $bandCount = array_sum(array_map('count', $days)); ?>
+      <section class="bk-board">
+        <h2 class="bk-band"><?= e($band) ?><span class="bk-band-n tabular"><?= $bandCount ?></span></h2>
+        <?php
+        // A band whose only day is the band itself would print "Today" twice,
+        // two inches apart. Drop the day bar in that case and let the band head
+        // carry it; any other single-day band keeps its date.
+        $showDayBar = true;
+        if (count($days) === 1) {
+            $onlyIso = (string)array_key_first($days);
+            if ($dayLabel($onlyIso, (string)$band) === $band) $showDayBar = false;
+        }
+        ?>
+        <div class="bk-scroll">
+          <table class="bk-sheet">
+            <caption class="bk-sr"><?= e($band) ?> bookings, <?= $bandCount ?> in total</caption>
+            <thead>
+              <tr>
+                <th scope="col">Pickup</th>
+                <th scope="col">Guest</th>
+                <th scope="col">Route</th>
+                <th scope="col" class="bk-h-svc">Service</th>
+                <th scope="col">Stage</th>
+                <th scope="col" class="bk-h-pay">Payment</th>
+                <th scope="col" class="bk-h-num">Total</th>
+                <th scope="col" class="bk-h-act"><span class="bk-sr">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($days as $iso => $list): ?>
+                <?php if ($showDayBar): ?>
+                <tr class="bk-dayrow">
+                  <td colspan="8"><div class="bk-daybar">
+                    <span class="bk-dayname"><?= e($dayLabel((string)$iso, (string)$band)) ?></span>
+                    <i class="bk-day-rule" aria-hidden="true"></i>
+                    <span class="bk-dayn tabular"><?= count($list) ?> <?= count($list) === 1 ? 'booking' : 'bookings' ?></span>
+                  </div></td>
+                </tr>
+                <?php endif; ?>
+                <?php foreach ($list as $r):
+                  $rnum = (string)$r['booking_number'];
+                  $rurl = url('admin/bookings.php?action=view&n=' . $rnum);
+                  $guest = trim((string)($r['cname'] ?: $r['guest_name']));
+                  if ($guest === '') $guest = 'Guest booking';
+                  $from = trim((string)($r['pickup_location'] ?? ''));
+                  $to = trim((string)($r['destination_location'] ?? ''));
+                  $svc = trim((string)$r['service_type']);
+                  $svcLabel = $svc === '' ? '' : ($serviceMap[$svc] ?? ucwords(str_replace('_', ' ', $svc)));
+                  $car = trim(((string)($r['make'] ?? '')) . ' ' . ((string)($r['model'] ?? '')));
+                  $who = trim((string)($r['driver_name'] ?? ''));
+                  $time = substr((string)$r['pickup_time'], 0, 5);
+                  if ($time === '' || $time === '00:00') $time = '';
+                ?>
+                <tr>
+                  <td class="bk-when">
+                    <a href="<?= $rurl ?>" class="bk-whenlink" title="Open <?= e($rnum) ?>">
+                      <b class="tabular"><?= e($time !== '' ? $time : '—') ?></b>
+                      <span class="bk-ref tabular"><?= e($rnum) ?></span>
+                    </a>
+                  </td>
+                  <td class="bk-guest">
+                    <span class="bk-gname"><?= e($guest) ?></span>
+                    <?php if ($who !== ''): ?><span class="bk-gcar"><?= e($who) ?><?= $car !== '' ? ' · ' . e($car) : '' ?></span>
+                    <?php elseif ($car !== ''): ?><span class="bk-gcar"><?= e($car) ?><?= $r['plate'] ? ' · ' . e((string)$r['plate']) : '' ?></span><?php endif; ?>
+                  </td>
+                  <td class="bk-route">
+                    <span class="bk-rp"><?= e($from !== '' ? $from : 'Pickup to confirm') ?></span>
+                    <span class="bk-rl" aria-hidden="true"></span>
+                    <span class="bk-rd"><?= e($to !== '' ? $to : 'Destination to confirm') ?></span>
+                  </td>
+                  <td class="bk-svc"><?php if ($svcLabel !== ''): ?><span class="bk-svctag"><?= e($svcLabel) ?></span><?php else: ?><span class="bk-none" title="No service type recorded">—</span><?php endif; ?></td>
+                  <td class="bk-stage"><?= status_pill((string)$r['status']) ?></td>
+                  <td class="bk-h-pay"><?php $pay = trim((string)$r['payment_status']); ?><?php if ($pay !== ''): ?><?= status_pill($pay) ?><?php else: ?><span class="bk-none" title="No payment recorded">—</span><?php endif; ?></td>
+                  <td class="bk-h-num tabular">$<?= money($r['total']) ?></td>
+                  <td class="bk-h-act">
+                    <a href="<?= $rurl ?>" class="bk-btn bk-btn-line bk-btn-ico" aria-label="Open <?= e($rnum) ?>" title="Open <?= e($rnum) ?>"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="bk-btn-t">View</span></a>
+                    <?php if ($canDispatch((string)$r['status'])): ?><a href="<?= url('admin/dispatch.php') ?>" class="bk-btn bk-btn-gold bk-btn-ico" aria-label="Dispatch <?= e($rnum) ?>" title="Dispatch <?= e($rnum) ?>"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span class="bk-btn-t">Dispatch</span></a><?php endif; ?>
+                  </td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </section>
+    <?php endforeach; ?>
+
+    <?php if ($bands): ?>
+      <p class="tabular text-xs text-[#AB8868] mt-3"><?= $listCount ?> <?= $listCount === 1 ? 'booking' : 'bookings' ?> on this board<?= $listCount >= 200 ? ' — showing the 200 nearest pickups' : '' ?> · $<?= money($listPaid) ?> paid</p>
+    <?php endif; ?>
     <?php
 }
 $content = ob_get_clean();

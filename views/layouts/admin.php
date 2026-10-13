@@ -18,11 +18,11 @@ try {
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 <link rel="stylesheet" href="<?= asset('css/app.css?v=20261007a') ?>">
-<link rel="stylesheet" href="<?= asset('css/admin.css?v=20261008c') ?>">
+<link rel="stylesheet" href="<?= asset('css/admin.css?v=20261012a') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.core.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-<script src="<?= asset('js/admin.js?v=20261008a') ?>" defer></script>
+<script src="<?= asset('js/admin.js?v=20261012a') ?>" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js" defer></script>
 </head>
 <body class="admin font-ui">

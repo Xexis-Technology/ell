@@ -48,6 +48,16 @@ CREATE TABLE IF NOT EXISTS drivers (
   payout_reference VARCHAR(255) NULL COMMENT 'payout information reference (e.g. last4 / handle, never full secrets)',
   license_number VARCHAR(80) NULL,
   license_expiry DATE NULL,
+  -- Clearance record: what the office has to hold on file before a chauffeur drives
+  date_of_birth DATE NULL,
+  medical_cert_expiry DATE NULL COMMENT 'a medical certificate past this date blocks the driver',
+  background_check_date DATE NULL,
+  drug_test_date DATE NULL,
+  -- Set the moment the driver finishes the last setup step. After this the wizard
+  -- never reopens: the driver waits on the clearance screen until the office
+  -- clears them. Submission is an event, not a condition re-derived from fields.
+  clearance_submitted_at DATETIME NULL,
+  notification_seen_at DATETIME NULL COMMENT 'when the driver last opened their notices page; drives the unread badge',
   description TEXT NULL COMMENT 'notes about the chauffeur, rich text from the admin editor',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -629,6 +639,37 @@ CREATE TABLE IF NOT EXISTS settings (
   svalue TEXT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_settings_key (skey)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------- admin_passkeys ----------------
+-- One row per passkey registered on an admin account. The private half stays
+-- on the device; this holds only the public key, in PEM because this PHP
+-- build cannot read binary DER.
+CREATE TABLE IF NOT EXISTS admin_passkeys (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  admin_id BIGINT UNSIGNED NOT NULL,
+  credential_id VARCHAR(255) NOT NULL COMMENT 'base64url, exactly as the device sent it',
+  public_key TEXT NOT NULL COMMENT 'PEM SubjectPublicKeyInfo',
+  alg_id SMALLINT NOT NULL COMMENT 'COSE alg: -7 = ES256, -257 = RS256',
+  alg_name VARCHAR(16) NOT NULL,
+  label VARCHAR(120) NOT NULL DEFAULT 'Passkey' COMMENT 'operator-chosen name for this device',
+  transports VARCHAR(190) NULL COMMENT 'how the device offers it, e.g. internal,hybrid,usb',
+  sign_counter BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  backed_up TINYINT(1) NOT NULL DEFAULT 0,
+  last_used_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_passkey_cred (credential_id),
+  KEY idx_passkey_admin (admin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Single-use WebAuthn challenges. Deleted as soon as they are claimed, and
+-- swept when they expire, so a captured response cannot be replayed.
+CREATE TABLE IF NOT EXISTS passkey_challenges (
+  id CHAR(32) NOT NULL PRIMARY KEY,
+  challenge VARCHAR(128) NOT NULL,
+  purpose ENUM('register','assert') NOT NULL,
+  admin_id BIGINT UNSIGNED NULL,
+  expires_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------- audit_logs ----------------

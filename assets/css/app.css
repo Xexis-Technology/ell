@@ -74,3 +74,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 #heroBooking input,#heroBooking select,#heroBooking textarea{-webkit-tap-highlight-color:transparent}
 #heroBooking input:hover,#heroBooking select:hover,#heroBooking textarea:hover{border-color:#2a2a2b !important}
 #heroBooking input:focus,#heroBooking input:focus-visible,#heroBooking input:active,#heroBooking select:focus,#heroBooking select:focus-visible,#heroBooking select:active,#heroBooking textarea:focus,#heroBooking textarea:focus-visible{outline:none !important;box-shadow:none !important;border-color:#2a2a2b !important}
+
+/* admin passkey sign-in */
+.login-split{display:flex;align-items:center;gap:.7rem;margin-top:1.1rem}
+.login-split::before,.login-split::after{content:"";flex:1;height:1px;background:#2a2a2b}
+.login-split span{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:#6a6a6a}
+.pk-login{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.55rem;padding:.8rem 1rem;border-radius:999px;border:1px solid #C8A96B;background:transparent;color:#F3D4A6;font-size:.85rem;font-weight:600;cursor:pointer;transition:background-color .15s}
+.pk-login:hover{background:rgba(217,185,120,.12)}
+.pk-login:focus-visible{outline:2px solid #D9B978;outline-offset:2px}
+.pk-login:disabled{opacity:.5;cursor:not-allowed}
+.pk-login-msg{margin-top:.65rem;padding:.6rem .75rem;border-radius:9px;font-size:.75rem;line-height:1.5;border:1px solid #2a2a2b;background:#161618;color:#c9c9c6}
+.pk-login-msg.is-bad{color:#f0bdb6;border-color:#5a2f2b;background:#1e1413}
+.pk-login-msg.is-ok{color:#b9e6c7;border-color:#2c4a35;background:#141c16}
+.pk-login-msg.is-busy{color:#f0cd97;border-color:#5a4526;background:#1d1811}
