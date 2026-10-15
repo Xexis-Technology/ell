@@ -49,6 +49,7 @@ require_once __DIR__ . '/Passkey.php';
 require_once __DIR__ . '/DriverPortal.php';
 require_once __DIR__ . '/DriverNotices.php';
 require_once __DIR__ . '/DispatchLabels.php';
+require_once __DIR__ . '/PageContent.php';
 require_once __DIR__ . '/Middleware/Auth.php';
 require_once __DIR__ . '/Middleware/Security.php';
 require_once __DIR__ . '/Services/NotificationService.php';

@@ -4,13 +4,20 @@ require_once __DIR__ . '/../app/bootstrap.php';
 require_once __DIR__ . '/../app/richtext.php';
 $pdo = Database::pdo();
 try { $body = $pdo->query('SELECT body FROM content WHERE slug = "faq" LIMIT 1')->fetch()['body'] ?? ''; } catch (Throwable) { $body = ''; }
-$groups = [
+
+/*
+  The categories and questions the desk has edited live in faq_groups/faqs.
+  The lists below are what this page has always shipped with, kept as the
+  fallback: until someone saves a question the public page renders exactly what
+  it rendered before, and if the tables ever go away the page does not go blank.
+*/
+$fallbackGroups = [
     'booking' => 'Booking',
     'pricing' => 'Pricing & Payment',
     'rides' => 'Rides',
     'account' => 'Account',
 ];
-$faqs = [
+$fallbackFaqs = [
     ['g' => 'booking', 'icon' => 'pin', 'q' => 'How many stops can I add?', 'a' => 'Up to 6 additional stops on point-to-point rides. Add them while booking and each is priced transparently.'],
     ['g' => 'booking', 'icon' => 'clock', 'q' => 'What is the hourly minimum?', 'a' => '2 hours. Add more time in half-hour steps — never less than 2.'],
     ['g' => 'booking', 'icon' => 'edit', 'q' => 'Can I change my pickup time?', 'a' => 'Yes, until 2 hours before pickup — from your account or by contacting us. Changes inside the cutoff cannot be accepted.'],
@@ -42,11 +49,29 @@ $icons = [
     'x' => '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>',
     'chat' => '<path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/>',
 ];
+
+/* Desk-edited rows win; the built-in lists stand in until there are any. */
+$faqs = faq_questions($pdo);
+if ($faqs === []) $faqs = $fallbackFaqs;
+
+$groups = [];
+foreach (faq_groups($pdo) as $g) {
+    // A category with no live questions would render an empty tab, so it is
+    // only shown when something is actually behind it.
+    if (($g['n'] ?? 0) > 0 || !$faqs) $groups[$g['slug']] = $g['label'];
+}
+if ($groups === []) $groups = $fallbackGroups;
+
+$copy = page_content($pdo, 'faq');
+// page_content() hands back the field's default verbatim, and a link default is
+// a label ("Contact us"), not a destination. Every other public page resolves it
+// here too, without which href="Contact us" is not a link at all.
+$linkUrl = url(PageContent::safe_link((string)($copy['faq_intro_link_url'] ?? ''), 'legal/contact.php'));
 ob_start();
 ?>
-<div class="max-w-3xl mx-auto px-4 py-12" x-data="{cat:'booking'}">
-  <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] text-center">Frequently asked questions</h1>
-  <p class="text-sm text-[#AB8868] mt-3 text-center">Everything about booking, pricing, rides and your account.<br>Can't find what you're looking for? <a class="underline text-[#F3D4A6]" href="<?= url('legal/contact.php') ?>">Contact our team</a>.</p>
+<div class="max-w-3xl mx-auto px-4 py-12" x-data="{cat:<?= e(json_encode((string)array_key_first($groups), JSON_HEX_APOS | JSON_HEX_QUOT)) ?>}">
+  <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] text-center"><?= e((string)($copy['faq_heading'] ?? 'Frequently asked questions')) ?></h1>
+  <p class="text-sm text-[#AB8868] mt-3 text-center"><?= nl2br(e((string)($copy['faq_intro'] ?? 'Everything about booking, pricing, rides and your account.'))) ?><br><?= e((string)($copy['faq_intro_link_lead'] ?? "Can't find what you're looking for?")) ?> <a class="underline text-[#F3D4A6]" href="<?= e($linkUrl) ?>"><?= e((string)($copy['faq_intro_link'] ?? 'Contact our team')) ?></a>.</p>
   <!-- Category pills -->
   <div class="flex flex-wrap justify-center gap-2 mt-6" role="tablist" aria-label="FAQ categories">
     <?php foreach ($groups as $gk => $gl): ?>
@@ -61,7 +86,7 @@ ob_start();
     <details class="hairline-b py-4 group" x-show="cat === '<?= $f['g'] ?>'" <?= $first ? 'open' : '' ?>>
       <summary class="flex items-center gap-4 cursor-pointer [&::-webkit-details-marker]:hidden">
         <span class="w-11 h-11 shrink-0 rounded-xl border border-[#3a3a3d] text-[#D9B978] inline-flex items-center justify-center" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><?= $icons[$f['icon']] ?></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><?= $icons[$f['icon']] ?? $icons['chat'] ?></svg>
         </span>
         <span class="flex-1 text-sm md:text-base text-[#F9F9F9] font-semibold"><?= e($f['q']) ?></span>
         <span class="text-[#AB8868] group-open:rotate-180 transition-transform shrink-0" aria-hidden="true">▾</span>
@@ -80,8 +105,9 @@ $pageTitle = 'FAQ | Exotic Lane Limo';
 $seo = content_seo($pdo, 'faq');
 $metaDesc = 'FAQs: booking, pricing and payment, rides, pickup changes, airport service, account help.';
 $headerVariant = 'index';
-// The 14 questions above are already in the page as real text, so they are
-// worth claiming as a FAQ block. Anything not in $faqs stays out of the
-// structured data rather than being invented.
+// Every question on screen is real text, so the whole visible list is claimed
+// as a FAQ block. A hidden row, or one whose icon we cannot draw, is still
+// included - search engines are told what a rider can actually read on the
+// page. Anything not in $faqs stays out rather than being invented.
 $schemaNodes = array_values(array_filter([seo_faq_node($faqs)]));
 require APP_ROOT . '/views/layouts/public.php';

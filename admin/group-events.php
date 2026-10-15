@@ -139,12 +139,18 @@ foreach ($rows as &$r) {
 }
 unset($r);
 
-// Oldest unanswered first inside a stage; settled inquiries sink to the bottom.
+// Newest first inside a stage; settled inquiries sink to the bottom.
+// The SQL above already fetches created_at DESC, and this sort is per-stage, so
+// without re-applying newest-first here the newest inquiry inside its stage ends
+// up at the BOTTOM of it - the SQL order is undone by the usort.
 usort($rows, static function (array $a, array $b) use ($STAGE_RANK): int {
     $ra = $STAGE_RANK[$a['status']] ?? 9;
     $rb = $STAGE_RANK[$b['status']] ?? 9;
     if ($ra !== $rb) return $ra <=> $rb;
-    return $b['age'] <=> $a['age'];
+    // age is days since created, so ascending age IS newest first. The id is the
+    // tiebreak: two inquiries from the same day must keep a stable order.
+    if ($a['age'] !== $b['age']) return $a['age'] <=> $b['age'];
+    return $b['id'] <=> $a['id'];
 });
 
 // ---- selected --------------------------------------------------------------

@@ -9,8 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios@1/dist/axios.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924g') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
 <script src="<?= asset('js/account.js') ?>" defer></script>
+<script src="<?= asset('js/alerts.js?v=20261014b') ?>" defer></script>
 </head>
 <body class="font-ui">
 <header class="bg-[#0F0F0E] border-b border-[#262628]"><div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">

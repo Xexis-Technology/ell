@@ -105,7 +105,7 @@ $queue = $pdo->query('SELECT p.*, d.name AS dname, d.reference AS dref,
     JOIN drivers d ON d.id = p.driver_id
     LEFT JOIN admins a ON a.id = p.reviewed_by
     WHERE p.status IN ("requested","approved")
-    ORDER BY FIELD(p.status, "requested", "approved"), p.requested_at ASC')->fetchAll();
+    ORDER BY FIELD(p.status, "requested", "approved"), p.requested_at DESC, p.id DESC')->fetchAll();
 
 // ---- history ---------------------------------------------------------------
 $hRows = $pdo->query('SELECT p.*, d.name AS dname, d.reference AS dref, a.name AS reviewer
@@ -139,10 +139,12 @@ if ($openId) {
     $st->execute([$openId]);
     $openPay = $st->fetch();
     if ($openPay) {
+// Newest earning first. It was ASC, which put the oldest line at the top of the
+        // payout being assembled - the opposite of "latest data first".
         $l = $pdo->prepare('SELECT e.id, e.booking_id, e.driver_amount, e.earned_at, b.booking_number
-            FROM driver_earnings e JOIN bookings b ON b.id = e.booking_id
-            WHERE e.driver_id = ? AND e.status = "unpaid"
-            ORDER BY e.earned_at ASC, e.id ASC');
+              FROM driver_earnings e JOIN bookings b ON b.id = e.booking_id
+              WHERE e.driver_id = ? AND e.status = "unpaid"
+              ORDER BY e.earned_at DESC, e.id DESC');
         $l->execute([(int)$openPay['driver_id']]);
         $openLines = $l->fetchAll();
     }

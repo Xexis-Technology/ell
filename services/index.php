@@ -2,6 +2,9 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
 $pdo = Database::pdo();
+$pc = page_content($pdo, 'services');
+$pu = static fn(string $k): string => url(PageContent::safe_link($pc[$k] ?? '', 'services/booking.php'));
+$pimg = static fn(string $k): string => media_url($pc[$k] ?? '');
 $minMile = null;
 $minHourly = null;
 try {
@@ -24,21 +27,21 @@ ob_start();
     <div class="grid md:grid-cols-2 gap-8 items-start">
       <div></div>
       <div class="text-sm text-[#E5E5E3] max-w-sm md:justify-self-end">
-        <p>From point-to-point to multi-vehicle events, one team drives every Exotic Lane service — with the price locked before you pay.</p>
+        <p><?= e($pc['hero_intro']) ?> — with the price locked before you pay.</p>
         <div class="flex flex-wrap gap-2 mt-4">
           <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full text-sm px-6 py-2.5">Book now</a>
-          <a href="#service-list" class="rounded-full text-sm px-6 py-2.5 border border-[#C8A96B] text-[#F3D4A6]">Learn more</a>
+          <a href="#service-list" class="rounded-full text-sm px-6 py-2.5 border border-[#C8A96B] text-[#F3D4A6]"><?= e($pc['hero_cta_2']) ?></a>
         </div>
       </div>
     </div>
     <div class="mt-8 md:mt-12 flex items-end justify-between gap-6">
-      <h1 class="font-display text-4xl md:text-6xl text-[#F9F9F9] leading-tight">Chauffeured service<br>for every <em class="text-[#F3D4A6]">occasion</em> <span aria-hidden="true">→</span></h1>
+      <h1 class="font-display text-4xl md:text-6xl text-[#F9F9F9] leading-tight"><?= e($pc['hero_title_lead']) ?><br>for every <em class="text-[#F3D4A6]">occasion</em> <span aria-hidden="true">→</span></h1>
       <a href="#service-list" aria-label="Scroll to services" class="hidden md:inline-flex w-16 h-16 shrink-0 rounded-full border border-[#C8A96B] items-center justify-center text-[#F3D4A6]">↓</a>
     </div>
     <div class="mt-6 flex flex-wrap gap-2">
-      <span class="tabular text-[11px] tracking-widest text-[#0A0A0C] bg-[#D9B978] rounded-full px-4 py-1.5">FIXED PRICING</span>
-      <span class="tabular text-[11px] tracking-widest text-[#F5F5F3] border border-[#3a3a3d] rounded-full px-4 py-1.5">60-MIN AIRPORT WAIT</span>
-      <span class="tabular text-[11px] tracking-widest text-[#F5F5F3] border border-[#3a3a3d] rounded-full px-4 py-1.5">2-HR HOURLY MINIMUM</span>
+      <span class="tabular text-[11px] tracking-widest text-[#0A0A0C] bg-[#D9B978] rounded-full px-4 py-1.5"><?= e($pc['hero_badge_1']) ?></span>
+      <span class="tabular text-[11px] tracking-widest text-[#F5F5F3] border border-[#3a3a3d] rounded-full px-4 py-1.5"><?= e($pc['hero_badge_2']) ?></span>
+      <span class="tabular text-[11px] tracking-widest text-[#F5F5F3] border border-[#3a3a3d] rounded-full px-4 py-1.5"><?= e($pc['hero_badge_3']) ?></span>
     </div>
   </div>
 </section>
@@ -46,27 +49,27 @@ ob_start();
 <!-- ABOUT -->
 <section class="max-w-7xl mx-auto px-4 py-10 md:py-14 grid lg:grid-cols-2 gap-10 items-center">
   <div>
-    <p class="eyebrow">Why Exotic Lane</p>
-    <h2 class="font-display text-3xl md:text-5xl text-[#F9F9F9] mt-2">Executive travel,<br>handled.</h2>
-    <p class="text-sm text-[#AB8868] mt-4 max-w-md">Professional chauffeurs, immaculate vehicles and server-side pricing. You tell us the route — airport, hourly or multi-stop — and we handle dispatch, waiting and confirmation by email.</p>
+    <p class="eyebrow"><?= e($pc['about_eyebrow']) ?></p>
+    <h2 class="font-display text-3xl md:text-5xl text-[#F9F9F9] mt-2"><?= e($pc['about_title_lead']) ?><br><?= e($pc['about_title_accent']) ?></h2>
+    <p class="text-sm text-[#AB8868] mt-4 max-w-md"><?= e($pc['about_body']) ?> You tell us the route — airport, hourly or multi-stop — and we handle dispatch, waiting and confirmation by email.</p>
     <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full inline-block mt-6 text-sm px-6 py-2.5">Book now</a>
   </div>
   <div class="relative">
     <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-      <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[300px] md:h-[400px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img src="<?= e($pimg('about_image')) ?>" alt="<?= e($pc['about_image_alt']) ?>" class="w-full h-[300px] md:h-[400px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     </div>
     <div class="absolute -bottom-5 left-4 right-4 sm:left-6 sm:right-auto sm:w-72 bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 shadow-2xl">
-      <p class="tabular text-[10px] tracking-widest text-[#AB8868]">EVERY RIDE INCLUDES</p>
-      <p class="text-sm text-[#F9F9F9] mt-1 font-semibold">Invoice · confirmation email · free waiting</p>
+      <p class="tabular text-[10px] tracking-widest text-[#AB8868]"><?= e($pc['about_card_eyebrow']) ?></p>
+      <p class="text-sm text-[#F9F9F9] mt-1 font-semibold"><?= e($pc['about_card_body']) ?></p>
     </div>
   </div>
 </section>
 
 <!-- SERVICE CARDS -->
 <section id="service-list" class="max-w-7xl mx-auto px-4 py-10 md:py-14">
-  <p class="eyebrow">Services</p>
+  <p class="eyebrow"><?= e($pc['list_eyebrow']) ?></p>
   <div class="flex flex-wrap items-end justify-between gap-4 mt-2">
-    <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9]">Built around your route</h2>
+    <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9]"><?= e($pc['list_title']) ?></h2>
     <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full text-sm px-6 py-2.5">Book now</a>
   </div>
   <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8">
@@ -104,11 +107,11 @@ ob_start();
 <section class="max-w-7xl mx-auto px-4 py-10 md:py-14 hairline-t">
   <div class="grid lg:grid-cols-2 gap-10 items-start">
     <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-      <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1000&q=60" alt="Chauffeur driving at night" class="w-full h-[280px] md:h-[360px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img src="<?= e($pimg('list_image')) ?>" alt="<?= e($pc['list_image_alt']) ?>" class="w-full h-[280px] md:h-[360px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     </div>
     <div>
-      <p class="eyebrow">Why choose us</p>
-      <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2">Built on trust,<br>driven by results</h2>
+      <p class="eyebrow"><?= e($pc['list_why_eyebrow']) ?></p>
+      <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2"><?= e($pc['list_why_lead']) ?><br><?= e($pc['list_why_accent']) ?></h2>
       <div class="mt-6">
         <details class="hairline-b py-4 group" open>
           <summary class="flex items-center justify-between gap-3 text-sm text-[#F9F9F9] font-semibold cursor-pointer [&::-webkit-details-marker]:hidden">Fixed, locked pricing<span class="text-[#C8A96B] group-open:rotate-180 transition-transform" aria-hidden="true">▾</span></summary>

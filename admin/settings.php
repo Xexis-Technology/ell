@@ -197,6 +197,124 @@ $challenge = b64url_encode(random_bytes(32));
         exit;
     }
 
+    /* ---- locations: what the rider's picker offers -------------------
+       These are rows, not settings, so each one gets its own operation:
+       adding or removing a location cannot be expressed as a field save. */
+
+    if ($op === 'loc_add') {
+        $label = trim((string)($_POST['label'] ?? ''));
+        $area = trim((string)($_POST['area'] ?? ''));
+        $kind = (string)($_POST['kind'] ?? 'place');
+        if (!isset(location_kinds()[$kind])) $kind = 'place';
+        if ($label === '') {
+            $msg = 'A location needs a name a rider would recognise.';
+            $isErr = true;
+        } elseif (mb_strlen($label) > 160) {
+            $msg = 'That location name is too long.';
+            $isErr = true;
+        } else {
+            $st = $pdo->prepare('SELECT id FROM locations WHERE label = ? LIMIT 1');
+            $st->execute([$label]);
+            if ($st->fetch()) {
+                $msg = 'That location is already in the list.';
+                $isErr = true;
+            } else {
+                $next = (int)$pdo->query('SELECT COALESCE(MAX(sort_order),0)+1 FROM locations')->fetchColumn();
+                $ins = $pdo->prepare('INSERT INTO locations (label, area, kind, sort_order) VALUES (?,?,?,?)');
+                $ins->execute([$label, mb_substr($area, 0, 80), $kind, $next]);
+                audit($pdo, 'admin', (int)$admin['id'], 'location.added', 'location', (int)$pdo->lastInsertId(), ['label' => $label, 'kind' => $kind]);
+                $msg = 'Location added.';
+            }
+        }
+        header('Location: ' . url('admin/settings.php?tab=locations&msg=' . urlencode($msg) . ($isErr ? '&err=1' : '')));
+        exit;
+    }
+
+    if ($op === 'loc_save') {
+        $ids = array_map('intval', (array)($_POST['loc_id'] ?? []));
+        $labels = (array)($_POST['loc_label'] ?? []);
+        $areas = (array)($_POST['loc_area'] ?? []);
+        $kinds = (array)($_POST['loc_kind'] ?? []);
+        $ons = (array)($_POST['loc_on'] ?? []);
+        $kindsAllowed = location_kinds();
+        $touched = 0;
+        $bad = [];
+        foreach ($ids as $i => $lid) {
+            if ($lid <= 0) continue;
+            $st = $pdo->prepare('SELECT id FROM locations WHERE id = ? LIMIT 1');
+            $st->execute([$lid]);
+            if (!$st->fetch()) continue;                 // never write to an id we do not own
+            $label = trim((string)($labels[$i] ?? ''));
+            $area = trim((string)($areas[$i] ?? ''));
+            $kind = (string)($kinds[$i] ?? 'place');
+            if (!isset($kindsAllowed[$kind])) $kind = 'place';
+            if ($label === '' || mb_strlen($label) > 160) {
+                $bad[] = '"' . mb_substr((string)($labels[$i] ?? ''), 0, 40) . '" needs a name under 160 characters';
+                continue;
+            }
+            // a duplicate label would break the unique key and confuse the picker
+            $st = $pdo->prepare('SELECT id FROM locations WHERE label = ? AND id <> ? LIMIT 1');
+            $st->execute([$label, $lid]);
+            if ($st->fetch()) {
+                $bad[] = '"' . mb_substr($label, 0, 40) . '" is already the name of another location';
+                continue;
+            }
+            $pdo->prepare('UPDATE locations SET label=?, area=?, kind=?, is_active=? WHERE id=?')
+                ->execute([$label, mb_substr($area, 0, 80), $kind, isset($ons[$i]) ? 1 : 0, $lid]);
+            $touched++;
+        }
+        if ($bad !== []) {
+            $msg = implode(' · ', array_slice($bad, 0, 3)) . (count($bad) > 3 ? ' · and ' . (count($bad) - 3) . ' more' : '');
+            $isErr = true;
+        } else {
+            audit($pdo, 'admin', (int)$admin['id'], 'location.saved', 'location', null, ['changed' => $touched]);
+            $msg = $touched === 0 ? 'No changes to save.' : 'Saved ' . $touched . ' location' . ($touched === 1 ? '' : 's') . '.';
+        }
+        header('Location: ' . url('admin/settings.php?tab=locations&msg=' . urlencode($msg) . ($isErr ? '&err=1' : '')));
+        exit;
+    }
+
+    if ($op === 'loc_delete') {
+        $lid = (int)($_POST['loc_id'] ?? 0);
+        $st = $pdo->prepare('SELECT id, label FROM locations WHERE id = ? LIMIT 1');
+        $st->execute([$lid]);
+        $row = $st->fetch();
+        if ($row) {
+            $pdo->prepare('DELETE FROM locations WHERE id = ?')->execute([$lid]);
+            audit($pdo, 'admin', (int)$admin['id'], 'location.deleted', 'location', $lid, ['label' => $row['label']]);
+            $msg = 'Location removed.';
+        } else {
+            $msg = 'That location no longer exists.';
+            $isErr = true;
+        }
+        header('Location: ' . url('admin/settings.php?tab=locations&msg=' . urlencode($msg) . ($isErr ? '&err=1' : '')));
+        exit;
+    }
+
+    if ($op === 'loc_move') {
+        $lid = (int)($_POST['loc_id'] ?? 0);
+        $dir = (string)($_POST['dir'] ?? 'up');
+        $st = $pdo->prepare('SELECT id, sort_order FROM locations WHERE id = ? LIMIT 1');
+        $st->execute([$lid]);
+        $row = $st->fetch();
+        if ($row) {
+            // Moving up wants the nearest row above, which is the highest
+            // sort_order below ours - so the ORDER BY runs opposite the compare.
+            $cmp = $dir === 'down' ? '>' : '<';
+            $order = $dir === 'down' ? 'ASC' : 'DESC';
+            $st = $pdo->prepare("SELECT id, sort_order FROM locations WHERE sort_order $cmp ? ORDER BY sort_order $order, id $order LIMIT 1");
+            $st->execute([(int)$row['sort_order']]);
+            $swap = $st->fetch();
+            if ($swap) {
+                $pdo->prepare('UPDATE locations SET sort_order = CASE id WHEN ? THEN ? WHEN ? THEN ? ELSE sort_order END WHERE id IN (?,?)')
+                    ->execute([$lid, (int)$swap['sort_order'], (int)$swap['id'], (int)$row['sort_order'], $lid, (int)$swap['id']]);
+                audit($pdo, 'admin', (int)$admin['id'], 'location.reordered', 'location', $lid, ['dir' => $dir]);
+            }
+        }
+        header('Location: ' . url('admin/settings.php?tab=locations'));
+        exit;
+    }
+
     if ($op === 'save_ops') {
         foreach (OPS_KEYS as $k => [$label, $kind, $why]) {
             if (!array_key_exists($k, $_POST)) continue;
@@ -288,16 +406,36 @@ $msg = (string)($_GET['msg'] ?? '');
 $isErr = isset($_GET['err']);
 $justTested = (string)($_GET['tested'] ?? '');
 
+/*
+  Two tabs, chosen by ?tab= and rendered server-side rather than toggled with
+  JavaScript. That is deliberate: every form on this page is a POST that
+  redirects back to itself, so a tab held only in the browser would silently
+  land the admin on the wrong one after saving, and the page would stop
+  working at all without JS. The tab bar is still real ARIA tabs - it is just
+  two links, so it survives no-JS and keeps a shareable URL.
+*/
+$tab = (string)($_GET['tab'] ?? 'settings');
+if (!in_array($tab, ['settings', 'locations'], true)) $tab = 'settings';
+
 $env = Integrations::env_read();
 $ops = [];
 foreach (OPS_KEYS as $k => [$label, $kind, $why]) $ops[$k] = (string)setting($pdo, $k, '');
 
-// Passkeys registered on this admin account.
-$st = $pdo->prepare('SELECT * FROM admin_passkeys WHERE admin_id = ? ORDER BY created_at');
+// Passkeys registered on this admin account. Newest first - the key you just
+    // added should be the first one you see, not the last.
+    $st = $pdo->prepare('SELECT * FROM admin_passkeys WHERE admin_id = ? ORDER BY created_at DESC, id DESC');
 $st->execute([(int)$admin['id']]);
 $passkeys = $st->fetchAll(PDO::FETCH_ASSOC);
 $hasPasskey = $passkeys !== [];
 $onlyPasskey = $hasPasskey && count($passkeys) === 1;
+
+// Locations the rider's picker will offer, hidden ones included so the editor
+// can still show (and switch back on) a place that was taken out of service.
+$locs = locations_admin($pdo);
+$locKinds = location_kinds();
+$locHidden = count(array_filter($locs, static fn($l) => !$l['on']));
+$locTally = [];
+foreach ($locs as $l) $locTally[$l['kind']] = ($locTally[$l['kind']] ?? 0) + 1;
 
 // Build each card's state from the last real test.
 $cards = [];
@@ -329,6 +467,17 @@ ob_start();
 ?>
 <?php if ($msg): ?><div class="alert <?= $isErr ? 'alert-err' : 'alert-ok' ?>"><?= e($msg) ?></div><?php endif; ?>
 
+<?php /* The tab bar, and a heading that describes the tab you are actually on. */ ?>
+<nav class="upd-tabs st-tabs" role="tablist" aria-label="Settings sections">
+  <a role="tab" class="upd-tab<?= $tab === 'settings' ? ' is-on' : '' ?>"
+     href="<?= e(url('admin/settings.php?tab=settings')) ?>"
+     aria-selected="<?= $tab === 'settings' ? 'true' : 'false' ?>">Settings</a>
+  <a role="tab" class="upd-tab<?= $tab === 'locations' ? ' is-on' : '' ?>"
+     href="<?= e(url('admin/settings.php?tab=locations')) ?>"
+     aria-selected="<?= $tab === 'locations' ? 'true' : 'false' ?>">Locations</a>
+</nav>
+
+<?php if ($tab === 'settings'): ?>
 <header class="st-head">
   <div>
     <p class="eyebrow">System</p>
@@ -342,6 +491,24 @@ ob_start();
     <span class="st-count is-wait"><b><?= $untested ?></b> to test</span>
   </p>
 </header>
+<?php else: ?>
+<header class="st-head">
+  <div>
+    <p class="eyebrow">System</p>
+    <h1 class="font-display">Locations</h1>
+    <p class="st-sub">Where a rider can be picked up or dropped off. These are the places offered
+      in the location picker on the homepage and the booking form.</p>
+  </div>
+  <p class="st-tally">
+    <span class="st-count"><b><?= count($locs) ?></b> in the list</span>
+    <?php foreach ($locKinds as $k => $kl): ?>
+      <span class="st-count"><b><?= (int)($locTally[$k] ?? 0) ?></b> <?= e(strtolower($kl)) ?></span>
+    <?php endforeach; ?>
+  </p>
+</header>
+<?php endif; ?>
+
+<?php if ($tab === 'settings'): ?>
 
 <section class="pk-desk" aria-labelledby="pk-h">
   <header class="st-head">
@@ -597,7 +764,127 @@ ob_start();
     </div>
   </form>
 </section>
+<?php endif; ?>
 
+<?php if ($tab === 'locations'): ?>
+<section class="st-ops st-locs" id="locations">
+  <p class="st-why" style="max-width:62ch;margin:0 0 1.1rem">
+    The <strong>type</strong> decides both the small line shown beside a name and which filter
+    chip it answers to — an airport shows under <em>Airports</em>, everything else
+    under <em>Everything else</em>. Names must be unique: a rider should never see the same
+    place twice.
+  </p>
+
+  <?php /* The counts live in the page header now; only the hidden tally is
+         left here, because that is the one an admin cannot read off the header
+         without counting by hand. */ ?>
+  <?php if ($locHidden): ?>
+    <div class="st-loc-tally">
+      <span class="st-count is-wait"><b><?= $locHidden ?></b> hidden from the picker</span>
+    </div>
+  <?php endif; ?>
+
+  <form method="post" class="st-loc-add">
+    <?= csrf_field() ?>
+    <input type="hidden" name="op" value="loc_add">
+    <h3 class="st-loc-add-h">Add a location</h3>
+    <div class="st-loc-add-grid">
+      <div>
+        <label for="locnew-label">Name</label>
+        <input id="locnew-label" type="text" name="label" class="input" maxlength="160" required
+               placeholder="LaGuardia Airport (LGA)">
+        <span class="st-why">Exactly what the rider sees and what gets booked.</span>
+      </div>
+      <div>
+        <label for="locnew-area">Area</label>
+        <input id="locnew-area" type="text" name="area" class="input" maxlength="80" placeholder="Queens">
+        <span class="st-why">Borough or region, shown beside the name.</span>
+      </div>
+      <div>
+        <label for="locnew-kind">Type</label>
+        <select id="locnew-kind" name="kind" class="input">
+          <?php foreach ($locKinds as $k => $kl): ?>
+            <option value="<?= e($k) ?>"<?= $k === 'place' ? ' selected' : '' ?>><?= e($kl) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <span class="st-why">Airports get their own filter chip.</span>
+      </div>
+      <button class="st-btn st-btn-gold" type="submit">Add location</button>
+    </div>
+  </form>
+
+  <form method="post" class="st-loc-list">
+    <?= csrf_field() ?>
+    <input type="hidden" name="op" value="loc_save">
+    <ol class="st-loc-rows">
+      <?php foreach ($locs as $i => $l): $lid = (int)$l['id']; ?>
+        <li class="st-loc-row<?= $l['on'] ? '' : ' is-off' ?>">
+          <span class="st-loc-n tabular"><?= $i + 1 ?></span>
+          <input type="hidden" name="loc_id[<?= $i ?>]" value="<?= $lid ?>">
+          <div class="st-loc-main">
+            <label class="upd-sr" for="loclbl-<?= $lid ?>">Name</label>
+            <input id="loclbl-<?= $lid ?>" type="text" name="loc_label[<?= $i ?>]" class="input" maxlength="160"
+                   value="<?= e($l['label']) ?>" placeholder="LaGuardia Airport (LGA)">
+            <label class="upd-sr" for="locarea-<?= $lid ?>">Area</label>
+            <input id="locarea-<?= $lid ?>" type="text" name="loc_area[<?= $i ?>]" class="input" maxlength="80"
+                   value="<?= e($l['area']) ?>" placeholder="Queens">
+          </div>
+          <label class="upd-sr" for="lockind-<?= $lid ?>">Type</label>
+          <select id="lockind-<?= $lid ?>" name="loc_kind[<?= $i ?>]" class="input st-loc-kind">
+            <?php foreach ($locKinds as $k => $kl): ?>
+              <option value="<?= e($k) ?>"<?= $l['kind'] === $k ? ' selected' : '' ?>><?= e($kl) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <label class="st-loc-on"><input type="checkbox" name="loc_on[<?= $i ?>]"<?= $l['on'] ? ' checked' : '' ?>> Offered</label>
+          <span class="st-loc-tools">
+            <button type="submit" class="upd-move" form="st-loc-op" title="Move up"
+                    onclick="stLocOp(<?= $lid ?>,'up')">&uarr;</button>
+            <button type="submit" class="upd-move" title="Move down"
+                    onclick="stLocOp(<?= $lid ?>,'down')">&darr;</button>
+            <button type="submit" class="upd-move is-danger" title="Remove"
+                    onclick="stLocOp(<?= $lid ?>,'delete')">&times;</button>
+          </span>
+        </li>
+      <?php endforeach; ?>
+    </ol>
+    <?php if (!$locs): ?>
+      <p class="st-why" style="padding:1rem 0">Nothing in the list yet. The picker is showing the
+        built-in fallback until you add something.</p>
+    <?php endif; ?>
+    <div class="st-acts st-loc-savebar">
+      <button class="st-btn st-btn-gold" type="submit">Save locations</button>
+      <span class="st-why" style="font-size:.76rem;color:var(--st-dim)">Riders see these on the
+        <a href="<?= url('services/booking.php') ?>" style="color:var(--st-champagne)">booking form</a> and the homepage.</span>
+    </div>
+  </form>
+
+  <?php /* Add and move/delete are their own POSTs: they change which rows
+         exist, and a form cannot nest inside the save form above. */ ?>
+  <form method="post" id="st-loc-op" class="upd-hidden-form">
+    <?= csrf_field() ?>
+    <input type="hidden" name="op" value="">
+    <input type="hidden" name="loc_id" value="">
+    <input type="hidden" name="dir" value="">
+  </form>
+
+</section>
+
+<script>
+/* Move and delete cannot ride the save form - they are separate POSTs through
+   the same CSRF gate. One helper fills the shared op-form and submits it. */
+function stLocOp(id, op) {
+  if (op === 'delete' && !confirm('Remove this location from the picker? Bookings already made with it keep their address.')) return;
+  var f = document.getElementById('st-loc-op');
+  if (!f) return;
+  f.op.value = op === 'delete' ? 'loc_delete' : 'loc_move';
+  f.loc_id.value = id;
+  f.dir.value = op === 'delete' ? '' : op;
+  f.submit();
+}
+</script>
+<?php endif; ?>
+
+<?php if ($tab === 'settings'): ?>
 <script>
 /*
  * Passkey enrolment. The server issues a single-use challenge, the browser
@@ -709,6 +996,7 @@ ob_start();
   });
 })();
 </script>
+<?php endif; ?>
 <?php
 $content = ob_get_clean();
 $pageTitle = 'Settings | Admin';

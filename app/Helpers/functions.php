@@ -383,3 +383,298 @@ function unique_vehicle_slug(PDO $pdo, string $base, ?int $excludeId = null): st
         $slug = $base . '-' . ($i++);
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Locations, for the picker on the homepage and the booking form.
+
+   The list used to be hardcoded twice - once in assets/js/booking.js and once
+   in index.php - so the two copies could drift and neither could be edited from
+   the admin. It lives in the `locations` table now, and these two functions are
+   the only way to read it.
+--------------------------------------------------------------------------- */
+
+/** The transport types the picker can filter by, in the order the chips run. */
+function location_kinds(): array
+{
+    return [
+        'airport' => 'Airport',
+        'rail'    => 'Rail',
+        'bus'     => 'Bus',
+        'cruise'  => 'Cruise',
+        'place'   => 'Place',
+    ];
+}
+
+/**
+ * The fallback list, identical to the seed in database.sql.
+ *
+ * Kept so the picker still works on a checkout that has not run the schema, or
+ * while the table is briefly unreachable. A booking form with an empty location
+ * list is worse than one showing a slightly stale list.
+ */
+function location_fallback(): array
+{
+    return [
+        ['label' => 'John F. Kennedy International Airport (JFK)', 'area' => 'Queens',     'kind' => 'airport'],
+        ['label' => 'LaGuardia Airport (LGA)',                      'area' => 'Queens',     'kind' => 'airport'],
+        ['label' => 'Newark Liberty International Airport (EWR)',   'area' => 'New Jersey', 'kind' => 'airport'],
+        ['label' => 'Moynihan Train Hall, Penn Station',            'area' => 'Manhattan',  'kind' => 'rail'],
+        ['label' => 'Grand Central Terminal',                       'area' => 'Manhattan',  'kind' => 'rail'],
+        ['label' => 'Port Authority Bus Terminal',                  'area' => 'Manhattan',  'kind' => 'bus'],
+        ['label' => 'Manhattan Cruise Terminal',                    'area' => 'Manhattan',  'kind' => 'cruise'],
+        ['label' => 'Brooklyn Cruise Terminal',                     'area' => 'Brooklyn',   'kind' => 'cruise'],
+        ['label' => 'Wall Street Piers',                            'area' => 'Manhattan',  'kind' => 'cruise'],
+        ['label' => 'Times Square',                                 'area' => 'Manhattan',  'kind' => 'place'],
+        ['label' => 'Central Park South',                           'area' => 'Manhattan',  'kind' => 'place'],
+        ['label' => 'World Trade Center',                           'area' => 'Manhattan',  'kind' => 'place'],
+        ['label' => 'Empire State Building',                        'area' => 'Manhattan',  'kind' => 'place'],
+        ['label' => 'Madison Square Garden',                        'area' => 'Manhattan',  'kind' => 'place'],
+        ['label' => 'Barclays Center',                              'area' => 'Brooklyn',   'kind' => 'place'],
+        ['label' => 'Yankee Stadium',                               'area' => 'Bronx',      'kind' => 'place'],
+        ['label' => 'Citi Field',                                   'area' => 'Queens',     'kind' => 'place'],
+        ['label' => 'MetLife Stadium',                              'area' => 'New Jersey', 'kind' => 'place'],
+    ];
+}
+
+/** Active locations in the order the office put them. */
+function locations(PDO $pdo): array
+{
+    try {
+        $rows = $pdo->query('SELECT label, area, kind FROM locations WHERE is_active = 1
+                             ORDER BY sort_order, id')->fetchAll();
+    } catch (Throwable) {
+        return location_fallback();
+    }
+    if ($rows === []) return location_fallback();
+    return array_map(static fn(array $r): array => [
+        'label' => (string)$r['label'],
+        'area'  => (string)$r['area'],
+        'kind'  => (string)$r['kind'],
+    ], $rows);
+}
+
+/** Every location including hidden ones - the editor needs to see them all. */
+function locations_admin(PDO $pdo): array
+{
+    try {
+        $rows = $pdo->query('SELECT id, label, area, kind, sort_order, is_active FROM locations
+                             ORDER BY sort_order, id')->fetchAll();
+    } catch (Throwable) {
+        return [];
+    }
+    return array_map(static fn(array $r): array => [
+        'id'    => (int)$r['id'],
+        'label' => (string)$r['label'],
+        'area'  => (string)$r['area'],
+        'kind'  => (string)$r['kind'],
+        'on'    => (int)$r['is_active'] === 1,
+    ], $rows);
+}
+
+/**
+ * Locations as the JSON payload the picker reads.
+ *
+ * The keys stay v/a/t because that is the shape the JavaScript already uses;
+ * renaming them would mean touching behaviour that works.
+ *
+ *   v  the label the rider sees and what gets booked
+ *   a  the display line beside it, "Area · Kind" for anything typed and just
+ *      "Area" for a plain landmark
+ *   t  the kind, verbatim: airport, rail, bus, cruise or place
+ *
+ * `t` used to be collapsed to a coarser airport/road pair, because the picker
+ * only had two chips and a rail terminal would vanish the moment "road" was
+ * switched on. The chips are built from this data now and offer all five, so
+ * the value is passed through untouched and the rider can actually filter to
+ * the same categories the office sees in Settings.
+ *
+ * The HEX flags matter. An admin can type a location called
+ * </script><script>alert(1)</script>, and without them the JSON closes the
+ * script tag and the rest of the line becomes markup. These escape <, >, &, '
+ * and " as &-forms, which JSON.parse decodes straight back to the original text.
+ */
+function locations_json(PDO $pdo): string
+{
+    $kinds = location_kinds();
+    $out = array_map(static function (array $l) use ($kinds): array {
+        $typed = $l['kind'] !== 'place' && isset($kinds[$l['kind']]);
+        $line = $l['area'];
+        if ($typed) $line = ($line !== '' ? $line . ' · ' : '') . $kinds[$l['kind']];
+        return [
+            'v' => $l['label'],
+            'a' => $line,
+            't' => $l['kind'],
+        ];
+    }, locations($pdo));
+    return (string)json_encode(
+        $out,
+        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar counts, for views/layouts/admin.php.
+
+   Each number is "something here needs a person", not "how many rows this
+   table has". A badge showing the total customer count tells an admin nothing
+   they can act on and trains them to ignore the badges; a badge showing 6
+   bookings waiting to be priced tells them where to go.
+
+   The definitions are the same ones admin/dashboard.php already uses, so a
+   badge and the dashboard can never disagree about what "needs attention"
+   means - awaiting pricing, pending drivers, requested payouts.
+
+   All of it is one query. Nine separate COUNT(*) round trips on every admin
+   page load is a noticeable tax on a page that is otherwise a single fetch.
+--------------------------------------------------------------------------- */
+
+/**
+ * @return array<string,int> admin page filename => count, only where > 0
+ */
+function admin_nav_counts(PDO $pdo): array
+{
+    $out = [];
+    foreach (admin_nav_state($pdo) as $page => $s) {
+        if (($s['n'] ?? 0) > 0) $out[$page] = (int)$s['n'];
+    }
+    return $out;
+}
+
+/**
+ * Everything the sidebar needs in one read: how many things need attention per
+ * page, when the newest of them arrived, and when this admin last opened that
+ * page.
+ *
+ * @return array<string,array{n:int,newest:?string,seen:?string}>
+ */
+function admin_nav_state(PDO $pdo, ?int $adminId = null): array
+{
+    // 'customers' is dated rather than stateful: it counts signups in the last
+    // week, matching the dashboard's own 7-day window, and goes to zero on its
+    // own instead of sticking at the lifetime total.
+    //
+    // Each section reports two things: how many rows would count, and when the
+    // newest of those rows arrived. "New" is then a comparison against the
+    // admin's last visit rather than mere existence - otherwise a badge for two
+    // inquiries you opened the page for would follow you around the console all
+    // day.
+    $sql = 'SELECT
+        (SELECT COUNT(*) FROM bookings WHERE status = "awaiting_pricing") AS bookings_n,
+        (SELECT MAX(created_at) FROM bookings WHERE status = "awaiting_pricing") AS bookings_t,
+        (SELECT COUNT(*) FROM bookings b WHERE b.status = "confirmed"
+            AND NOT EXISTS (SELECT 1 FROM dispatches d WHERE d.booking_id = b.id AND d.driver_id IS NOT NULL)) AS dispatch_n,
+        (SELECT MAX(b.created_at) FROM bookings b WHERE b.status = "confirmed"
+            AND NOT EXISTS (SELECT 1 FROM dispatches d WHERE d.booking_id = b.id AND d.driver_id IS NOT NULL)) AS dispatch_t,
+        (SELECT COUNT(*) FROM drivers WHERE status = "pending") AS drivers_n,
+        (SELECT MAX(created_at) FROM drivers WHERE status = "pending") AS drivers_t,
+        (SELECT COUNT(*) FROM payments WHERE status = "failed") AS payments_n,
+        (SELECT MAX(created_at) FROM payments WHERE status = "failed") AS payments_t,
+        (SELECT COUNT(*) FROM driver_payouts WHERE status = "requested") AS payouts_n,
+        (SELECT MAX(requested_at) FROM driver_payouts WHERE status = "requested") AS payouts_t,
+        (SELECT COUNT(*) FROM group_event_inquiries WHERE status = "new") AS group_events_n,
+        (SELECT MAX(created_at) FROM group_event_inquiries WHERE status = "new") AS group_events_t,
+        (SELECT COUNT(*) FROM notifications WHERE status = "failed") AS notifications_n,
+        (SELECT MAX(created_at) FROM notifications WHERE status = "failed") AS notifications_t,
+        (SELECT COUNT(*) FROM blog_posts WHERE status <> "published") AS blog_n,
+        (SELECT MAX(created_at) FROM blog_posts WHERE status <> "published") AS blog_t,
+        (SELECT COUNT(*) FROM customers WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS customers_n,
+        (SELECT MAX(created_at) FROM customers WHERE DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)) AS customers_t';
+
+    try {
+        $row = $pdo->query($sql)->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable) {
+        // A table that has not been created yet must not take the whole admin
+        // area down with it. No badge is a fine outcome.
+        return [];
+    }
+    if (!is_array($row)) return [];
+
+    $map = [
+        'bookings.php'      => 'bookings',
+        'dispatch.php'      => 'dispatch',
+        'drivers.php'       => 'drivers',
+        'payments.php'      => 'payments',
+        'payouts.php'       => 'payouts',
+        'group-events.php'  => 'group_events',
+        'notifications.php' => 'notifications',
+        'blog.php'          => 'blog',
+        'customers.php'     => 'customers',
+    ];
+
+    $out = [];
+    foreach ($map as $page => $key) {
+        $n = (int)($row[$key . '_n'] ?? 0);
+        $newest = $row[$key . '_t'] ?? null;
+        $out[$page] = [
+            'n' => $n,
+            'newest' => ($newest === null || $newest === '') ? null : (string)$newest,
+            'seen' => null,
+        ];
+    }
+
+    // One more read for this admin's visit times. Null admin = not signed in as
+    // someone (a shared layout edge case), so everything stays unseen.
+    if ($adminId !== null && $adminId > 0) {
+        try {
+            $st = $pdo->prepare('SELECT section, seen_at FROM admin_nav_seen WHERE admin_id = ?');
+            $st->execute([$adminId]);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $sec = (string)$r['section'];
+                if (isset($out[$sec])) $out[$sec]['seen'] = (string)$r['seen_at'];
+            }
+        } catch (Throwable) {
+            // No table, no history: everything counts as unseen, which is the
+            // safe direction to fail in.
+        }
+    }
+    return $out;
+}
+
+/**
+ * Stamp "this admin has now looked at that section".
+ *
+ * Called when the page is rendered, so opening Groups clears the Groups badge
+ * immediately - the inquiries are on screen, there is nothing left to go and
+ * look at. A later inquiry arrives with a newer created_at and the badge
+ * returns on its own.
+ */
+function admin_nav_mark_seen(PDO $pdo, ?int $adminId, string $section): void
+{
+    if ($adminId === null || $adminId <= 0 || $section === '') return;
+    try {
+        $st = $pdo->prepare('INSERT INTO admin_nav_seen (admin_id, section, seen_at) VALUES (?,?,NOW())
+                             ON DUPLICATE KEY UPDATE seen_at = NOW()');
+        $st->execute([$adminId, $section]);
+    } catch (Throwable) {
+        // Losing a bookmark is not worth failing a page over.
+    }
+}
+
+/**
+ * Should this section show a badge to this admin right now?
+ *
+ * Three things have to hold: there is something to look at, this is not the
+ * page already on screen, and it arrived after their last visit.
+ */
+function admin_nav_shows(array $s, bool $isCurrentPage): bool
+{
+    $n = (int)($s['n'] ?? 0);
+    if ($n <= 0) return false;
+    if ($isCurrentPage) return false;
+    $seen = $s['seen'] ?? null;
+    if ($seen === null || $seen === '') return true;      // never looked
+    $newest = $s['newest'] ?? null;
+    if ($newest === null) return true;                    // counted, but undated
+    // String comparison is safe here: both sides are DATETIME literals.
+    return (string)$newest > (string)$seen;
+}
+/**
+ * How a count is written in a badge: "7", or "99+" once there are more than 99.
+ *
+ * Capping is the point - a badge three digits wide shoves the label out of the
+ * sidebar and stops being glanceable, which is the only thing it is for.
+ */
+function admin_badge(int $n): string
+{
+    return $n > 99 ? '99+' : (string)$n;
+}

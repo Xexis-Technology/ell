@@ -112,8 +112,9 @@ try { $favicon = media_url(setting($pdo, 'favicon', '')); } catch (Throwable) {}
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios@1/dist/axios.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20260924g') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
 <script src="<?= asset('js/app.js') ?>" defer></script>
+<script src="<?= asset('js/alerts.js?v=20261014b') ?>" defer></script>
 <script type="application/ld+json">
 <?php
 /**
@@ -286,6 +287,8 @@ if ($pdo) {
   <p class="text-sm text-[#AB8868] mt-2">One email at a time, never spam. Unsubscribe anytime.</p>
   <?php if ($newsletterOk): ?><div class="alert alert-ok mt-4">You're on the list &mdash; welcome aboard.</div>
   <?php elseif ($newsletterMsg): ?><div class="alert alert-err mt-4"><?= e($newsletterMsg) ?></div><?php endif; ?>
+  <?php /* Credit line: below the "One email at a time..." line, above the input. */ ?>
+  <?php require_once APP_ROOT . '/views/partials/credits.php'; ?>
   <form method="post" class="mt-4 flex flex-col sm:flex-row gap-2 max-w-md mx-auto"><?= csrf_field() ?>
     <input type="hidden" name="form" value="newsletter">
     <input type="email" name="newsletter_email" required placeholder="you@example.com" aria-label="Email for newsletter" class="input rounded-full flex-1">

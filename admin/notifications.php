@@ -23,6 +23,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit($pdo, 'admin', (int)$admin['id'], 'newsletter.unsubscribed', 'newsletter_subscriber', $id, ['email' => $gone]);
             $msg = $gone . ' removed from the newsletter.';
         }
+    } elseif ($op === 'contact-handled' || $op === 'contact-reopen') {
+        /* One inbox needs one way to clear a row and one way to undo a misclick.
+           Reopening exists because "I marked the wrong one" is the predictable
+           second-day mistake, and without it the only recovery is a database
+           edit nobody should have to make. */
+        $handled = $op === 'contact-handled';
+        $st = $pdo->prepare('SELECT name FROM contact_submissions WHERE id = ? LIMIT 1');
+        $st->execute([$id]);
+        $who = $st->fetchColumn();
+        if ($who === false) {
+            $msg = 'That message no longer exists.';
+            $isErr = true;
+        } else {
+            $pdo->prepare('UPDATE contact_submissions
+                           SET status = ?, handled_at = ' . ($handled ? 'NOW()' : 'NULL') . ',
+                               handled_by = ' . ($handled ? '?' : 'NULL') . '
+                           WHERE id = ?')->execute($handled ? ['handled', (int)$admin['id'], $id] : ['new', $id]);
+            audit($pdo, 'admin', (int)$admin['id'],
+                  $handled ? 'contact.handled' : 'contact.reopened',
+                  'contact_submission', $id, ['name' => $who]);
+            $msg = ($handled ? 'Marked as handled: ' : 'Reopened: ') . $who;
+        }
     } else {
         $msg = 'Nothing to do.';
         $isErr = true;
@@ -37,12 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $msg = (string)($_GET['msg'] ?? '');
 $isErr = isset($_GET['err']);
 
-// Two subjects that share no records and no filtering: what the site tried to
-// send, and who subscribed to hear from it. Tabs, because you never need both
-// at once. Status and template stay filters inside Messages — a failed and a
-// delivered message are the same record in two states.
+// Three subjects that share no records and no filtering: what the site tried to
+// send, who subscribed to hear from it, and what people wrote in to say. Tabs,
+// because you never need more than one at a time. Status and template stay
+// filters inside Messages — a failed and a delivered message are the same
+// record in two states.
+//
+// 'contact' is inbound and the other two are outbound, which is why this page
+// is really two pages sharing a header: the log of what went out, and the
+// inbox of what came back.
 $view = (string)($_GET['view'] ?? 'messages');
-if (!in_array($view, ['messages', 'newsletter'], true)) $view = 'messages';
+if (!in_array($view, ['messages', 'newsletter', 'contact'], true)) $view = 'messages';
 
 // Whether this system can send at all. The log is worthless without it, so the
 // page says so once at the top instead of leaving 31 identical failures to be
@@ -102,6 +129,43 @@ foreach ($subs as $s) {
     if ($s['status'] === 'active') $subActive++; else $subGone++;
 }
 
+// ---- user contact ----------------------------------------------------------
+// The whole point of storing these is the message body, so this is the one tab
+// that renders full text rather than a template key. Nothing here can be
+// re-sent, only answered - which is why the action is "mark handled" and not
+// "resend".
+$contactStatus = (string)($_GET['cs'] ?? '');
+if (!in_array($contactStatus, ['new', 'handled'], true)) $contactStatus = '';
+
+$sqlC = 'SELECT c.id, c.name, c.email, c.phone, c.message, c.status, c.created_at,
+                c.handled_at, c.handled_by, a.name AS handler
+         FROM contact_submissions c LEFT JOIN admins a ON a.id = c.handled_by';
+$whereC = [];
+$paramsC = [];
+if ($contactStatus !== '') { $whereC[] = 'c.status = ?'; $paramsC[] = $contactStatus; }
+// Reuse the one search box: on this tab it matches the person or the words
+// they wrote, which is what you actually have when someone rings to chase.
+if ($q !== '') {
+    $whereC[] = '(c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ? OR c.message LIKE ?)';
+    array_push($paramsC, "%$q%", "%$q%", "%$q%", "%$q%");
+}
+if ($whereC) $sqlC .= ' WHERE ' . implode(' AND ', $whereC);
+// Newest first, and unanswered first: an inbox where a handled row from this
+// morning outranks a message that arrived an hour ago is an inbox you stop
+// reading.
+$sqlC .= " ORDER BY (c.status = 'new') DESC, c.id DESC LIMIT 300";
+$stC = $pdo->prepare($sqlC);
+$stC->execute($paramsC);
+$contacts = $stC->fetchAll();
+
+$stC = $pdo->query('SELECT status, COUNT(*) c FROM contact_submissions GROUP BY status');
+$cAll = 0; $cNew = 0; $cDone = 0;
+foreach ($stC->fetchAll() as $r) {
+    $n = (int)$r['c'];
+    $cAll += $n;
+    if ($r['status'] === 'new') $cNew = $n; else $cDone += $n;
+}
+
 /** Template keys read as code all day; say what they mean in plain words. */
 function nt_label(string $tpl): string
 {
@@ -114,24 +178,35 @@ ob_start();
 
 <header class="nt-head">
   <div>
-    <p class="eyebrow">Content</p>
-    <h1 class="font-display">Outbound</h1>
+    <p class="eyebrow"><?= $view === 'contact' ? 'Inbound' : 'Content' ?></p>
+    <h1 class="font-display"><?= $view === 'contact' ? 'User Contact' : 'Outbound' ?></h1>
     <p class="nt-sub"><?= $view === 'messages'
         ? 'Every message this site tried to send, and whether it reached a person. Failures are grouped by what caused them.'
-        : 'The people who asked to hear from this site. Removing an address stops the newsletter reaching them; it does not touch their bookings.' ?></p>
+        : ($view === 'contact'
+            ? 'What people wrote through the contact form on the site. Answer them, then mark it handled so it stops asking.'
+            : 'The people who asked to hear from this site. Removing an address stops the newsletter reaching them; it does not touch their bookings.') ?></p>
   </div>
+  <?php if ($view === 'contact'): ?>
+  <p class="nt-figures">
+    <span><b><?= $cAll ?></b> received</span>
+    <span<?= $cNew > 0 ? ' class="is-bad"' : '' ?>><b><?= $cNew ?></b> to answer</span>
+    <?php if ($cDone > 0): ?><span><b><?= $cDone ?></b> handled</span><?php endif; ?>
+  </p>
+  <?php else: ?>
   <p class="nt-figures">
     <span><b><?= $total ?></b> logged</span>
     <?php if ($counts['sent'] > 0): ?><span><b><?= $counts['sent'] ?></b> delivered</span><?php endif; ?>
     <?php if ($counts['failed'] > 0): ?><span class="is-bad"><b><?= $counts['failed'] ?></b> failed</span><?php endif; ?>
     <span><b><?= $subActive ?></b> subscribers</span>
   </p>
+  <?php endif; ?>
 </header>
 
 <nav class="nt-tabs" aria-label="Sections">
   <?php foreach ([
-      'messages' => ['Messages', $total, 'Every message the site tried to send'],
+      'messages'   => ['Messages', $total, 'Every message the site tried to send'],
       'newsletter' => ['Newsletter', $subActive, 'People who subscribed to hear from the site'],
+      'contact'    => ['User Contact', $cNew, 'Messages sent through the contact form'],
   ] as $key => [$label, $n, $why]): ?>
   <a class="nt-tab<?= $view === $key ? ' is-on' : '' ?>" href="<?= url('admin/notifications.php?view=' . $key) ?>"
      <?= $view === $key ? 'aria-current="page"' : '' ?>>
@@ -267,7 +342,7 @@ ob_start();
   </ol>
 <?php endif; ?>
 
-<?php else: ?>
+<?php elseif ($view === 'newsletter'): ?>
 <section class="nt-news">
   <header class="nt-news-head">
     <h2 class="nt-sec-h">Who receives it</h2>
@@ -300,6 +375,90 @@ ob_start();
           <button class="nt-unsub" data-confirm="Remove <?= e((string)$s['email']) ?> from the newsletter? They stop receiving it straight away.">Remove</button>
         </form>
         <?php endif; ?>
+      </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</section>
+
+<?php else: ?>
+<section class="nt-news">
+  <header class="nt-news-head">
+    <h2 class="nt-sec-h"><?= $cNew > 0 ? 'Waiting on you' : 'All caught up' ?></h2>
+    <p class="nt-news-sub"><?= $cNew > 0 ? $cNew . ' message' . ($cNew === 1 ? '' : 's') . ' not answered yet' : 'Nothing needs an answer' ?></p>
+  </header>
+
+  <nav class="nt-filters" aria-label="Filter contact messages">
+    <form method="get" class="nt-search" action="<?= url('admin/notifications.php') ?>">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input type="hidden" name="view" value="contact">
+      <input type="search" name="q" value="<?= e($q) ?>" placeholder="Name, email, phone or words in the message" aria-label="Search contact messages">
+      <?php if ($contactStatus): ?><input type="hidden" name="cs" value="<?= e($contactStatus) ?>"><?php endif; ?>
+      <button type="submit">Search</button>
+    </form>
+    <div class="nt-chips">
+      <?php foreach (['' => 'All', 'new' => 'To answer', 'handled' => 'Handled'] as $k => $label):
+        $n = $k === '' ? $cAll : ($k === 'new' ? $cNew : $cDone); ?>
+      <a class="nt-chip<?= $contactStatus === $k ? ' is-on' : '' ?>"
+         href="<?= url('admin/notifications.php?' . http_build_query(array_filter(['view' => 'contact', 'cs' => $k, 'q' => $q]))) ?>"
+         <?= $contactStatus === $k ? 'aria-current="true"' : '' ?>><?= e($label) ?><b><?= $n ?></b></a>
+      <?php endforeach; ?>
+    </div>
+  </nav>
+
+  <?php if (!$contacts): ?>
+    <div class="nt-empty-wrap">
+      <p class="nt-blank"><?= $q !== '' || $contactStatus !== '' ? 'No message matches that.' : 'Nobody has written in yet.' ?></p>
+      <p class="nt-blank-sub">
+        <?php if ($q !== '' || $contactStatus !== ''): ?>
+          <a href="<?= url('admin/notifications.php?view=contact') ?>">Show every message</a>.
+        <?php else: ?>
+          Anything sent through the contact form on the site arrives here, in full.
+        <?php endif; ?>
+      </p>
+    </div>
+  <?php else: ?>
+    <ul class="nt-inbox">
+      <?php foreach ($contacts as $c):
+        $done = $c['status'] === 'handled';
+        $mailTo = 'mailto:' . rawurlencode((string)$c['email']) . '?subject=' . rawurlencode('Re: your message to Exotic Lane');
+        $when = (int)strtotime((string)$c['created_at']);
+        $ago = max(0, (int)floor((time() - $when) / 86400));
+      ?>
+      <li class="nt-msg<?= $done ? ' is-done' : '' ?>">
+        <div class="nt-msg-main">
+          <span class="nt-msg-top">
+            <span class="nt-msg-name"><?= e((string)$c['name']) ?></span>
+            <a class="nt-msg-mail" href="<?= e($mailTo) ?>"><?= e((string)$c['email']) ?></a>
+            <?php if (!empty($c['phone'])): ?>
+              <a class="nt-msg-tel" href="tel:<?= e(preg_replace('/[^\d+]/', '', (string)$c['phone'])) ?>"><?= e((string)$c['phone']) ?></a>
+            <?php endif; ?>
+            <span class="nt-dim">&middot; <?= $ago === 0 ? 'today' : ($ago === 1 ? 'yesterday' : $ago . ' days ago') ?></span>
+          </span>
+          <?php /* The one tab that shows what was actually written. Collapsed by
+                 default: a wall of full messages is unreadable, and the point of
+                 an inbox is triage, not reading everything at once. */ ?>
+          <details class="nt-msg-body">
+            <summary><span class="nt-msg-excerpt"><?= e(mb_strimwidth(trim(preg_replace('/\s+/', ' ', (string)$c['message'])), 0, 120, '…')) ?></span></summary>
+            <p><?= nl2br(e((string)$c['message'])) ?></p>
+          </details>
+          <?php if ($done): ?>
+            <span class="nt-msg-done">
+              handled <?= $c['handled_at'] ? e(date('j M, H:i', strtotime((string)$c['handled_at']))) : '' ?><?= $c['handler'] ? ' by ' . e((string)$c['handler']) : '' ?>
+            </span>
+          <?php endif; ?>
+        </div>
+        <div class="nt-row-act">
+          <a class="nt-mail" href="<?= e($mailTo) ?>"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Reply</a>
+          <form method="post" class="nt-addr-form">
+            <?= csrf_field() ?>
+            <input type="hidden" name="op" value="<?= $done ? 'contact-reopen' : 'contact-handled' ?>">
+            <input type="hidden" name="view" value="contact">
+            <input type="hidden" name="q" value="<?= e($q) ?>">
+            <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+            <button class="nt-unsub" <?= $done ? '' : 'data-confirm="Mark this as handled? It leaves the to-answer list."' ?>><?= $done ? 'Reopen' : 'Mark handled' ?></button>
+          </form>
+        </div>
       </li>
       <?php endforeach; ?>
     </ul>

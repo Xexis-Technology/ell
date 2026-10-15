@@ -107,6 +107,12 @@ function audit_sentence(array $row, array $people = [], array $vehicles = []): a
         'auth.logout' => ['Signed out', fn() => ''],
         'auth.password_reset' => ['Password reset requested', fn() => audit_subject($row, $people, $vehicles)],
         'auth.register' => ['Account created', fn() => trim((string)($meta['email'] ?? ''))],
+        'faq.added' => ['FAQ question added', fn() => trim((string)($meta['question'] ?? ''))],
+        'faq.deleted' => ['FAQ question removed', fn() => trim((string)($meta['question'] ?? ''))],
+        'faq.reordered' => ['FAQ question moved', fn() => audit_state((string)($meta['dir'] ?? ''))],
+        'faq_group.added' => ['FAQ category added', fn() => trim((string)($meta['label'] ?? ''))],
+        'faq_group.renamed' => ['FAQ category renamed', fn() => trim((string)($meta['label'] ?? ''))],
+        'faq_group.deleted' => ['FAQ category removed', fn() => trim((string)($meta['slug'] ?? ''))],
     ];
     if (isset($known[$action])) {
         [$verb, $detailFn] = $known[$action];

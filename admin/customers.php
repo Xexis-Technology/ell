@@ -52,7 +52,11 @@ if ($q !== '') {
     $sqlIndex .= ' WHERE c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?';
     $params = ["%$q%", "%$q%", "%$q%"];
 }
-$sqlIndex .= ' ORDER BY spend DESC, c.name ASC LIMIT 200';
+// Newest signup first, so a client who joined this morning is the first row
+    // an admin sees. It used to rank by spend, which reliably buried anyone new
+    // under the existing book - the opposite of what a client list is for. Spend
+    // is still selected and still shown in the table.
+    $sqlIndex .= ' ORDER BY c.created_at DESC, c.id DESC LIMIT 200';
 $st = $pdo->prepare($sqlIndex);
 $st->execute($params);
 $clients = $st->fetchAll();

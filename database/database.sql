@@ -632,6 +632,220 @@ CREATE TABLE IF NOT EXISTS content (
   CONSTRAINT fk_content_admin FOREIGN KEY (updated_by) REFERENCES admins(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------- page_blocks: field-level content for the public pages ----------------
+-- One row per editable field. The `content` table above is page-level (title +
+-- one body of rich text) and suits the legal pages; the marketing pages are
+-- built from dozens of individual words - a hero line, a card body, an alt text -
+-- so they need to be addressable one field at a time.
+--
+-- `field_key` is unique per page rather than per section on purpose: a section
+-- is presentation for the editor's benefit, and letting the same key exist
+-- twice in one page would make "which of these two is live?" a real question.
+-- Section is therefore advisory grouping, not part of a field's identity.
+CREATE TABLE IF NOT EXISTS page_blocks (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  page_slug VARCHAR(80) NOT NULL,
+  section_key VARCHAR(80) NOT NULL DEFAULT 'general',
+  field_key VARCHAR(80) NOT NULL,
+  value MEDIUMTEXT NULL,
+  value_type ENUM('text','textarea','link','image') NOT NULL DEFAULT 'text',
+  sort_order INT NOT NULL DEFAULT 0,
+  updated_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_page_block (page_slug, field_key),
+  KEY idx_page_blocks_page (page_slug, sort_order),
+  KEY idx_page_blocks_admin (updated_by),
+  CONSTRAINT fk_page_block_admin FOREIGN KEY (updated_by) REFERENCES admins(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------- faq_groups / faqs: the questions on the public FAQ page ----------------
+-- Separate from page_blocks on purpose. page_blocks holds fixed, one-per-page
+-- fields; these two hold rows that come and go, which is what makes "add a
+-- question" possible without an ALTER every time the desk learns something new.
+--
+-- A group is referenced by its slug rather than its label so the render, the
+-- filter pills and the JSON-LD all agree on identity while the wording stays
+-- editable. ON DELETE RESTRICT is the point of the foreign key: you cannot drop
+-- a category that still has questions on the public page.
+CREATE TABLE IF NOT EXISTS faq_groups (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(40) NOT NULL,
+  label VARCHAR(80) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_faq_group_slug (slug),
+  KEY idx_faq_group_order (sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS faqs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  group_id BIGINT UNSIGNED NOT NULL,
+  question VARCHAR(255) NOT NULL,
+  answer TEXT NOT NULL,
+  icon VARCHAR(32) NOT NULL DEFAULT 'pin',
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  updated_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_faq_group_order (group_id, sort_order),
+  KEY idx_faq_active (is_active),
+  KEY idx_faq_admin (updated_by),
+  CONSTRAINT fk_faq_group FOREIGN KEY (group_id) REFERENCES faq_groups(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_faq_admin FOREIGN KEY (updated_by) REFERENCES admins(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------- locations: what the picker offers a rider ----------------
+-- The location picker on the homepage and the booking form used to be a list
+-- hardcoded in two places - assets/js/booking.js and index.php - so the two
+-- copies could disagree and neither could be edited from the admin. This is
+-- that same list, once, in the database.
+--
+--   label     what the rider sees and what gets booked ("LaGuardia Airport (LGA)")
+--   area      the borough or region ("Queens"), shown beside the label
+--   kind      transport type, which is also the picker's filter chip:
+--             airport, rail, bus, cruise or place
+CREATE TABLE IF NOT EXISTS locations (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  label VARCHAR(160) NOT NULL,
+  area VARCHAR(80) NOT NULL DEFAULT '',
+  kind VARCHAR(24) NOT NULL DEFAULT 'place',
+  sort_order INT NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_location_label (label),
+  KEY idx_location_order (sort_order),
+  KEY idx_location_kind (kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- The eighteen places the site has always offered, in the order it has always
+-- offered them: airports first (they are what most airport transfers search
+-- for), then terminals, then city landmarks.
+INSERT INTO locations (label, area, kind, sort_order) VALUES
+  ('John F. Kennedy International Airport (JFK)', 'Queens',      'airport', 1),
+  ('LaGuardia Airport (LGA)',                      'Queens',      'airport', 2),
+  ('Newark Liberty International Airport (EWR)',   'New Jersey',  'airport', 3),
+  ('Moynihan Train Hall, Penn Station',            'Manhattan',   'rail',    4),
+  ('Grand Central Terminal',                       'Manhattan',   'rail',    5),
+  ('Port Authority Bus Terminal',                  'Manhattan',   'bus',     6),
+  ('Manhattan Cruise Terminal',                    'Manhattan',   'cruise',  7),
+  ('Brooklyn Cruise Terminal',                     'Brooklyn',    'cruise',  8),
+  ('Wall Street Piers',                            'Manhattan',   'cruise',  9),
+  ('Times Square',                                 'Manhattan',   'place',  10),
+  ('Central Park South',                           'Manhattan',   'place',  11),
+  ('World Trade Center',                           'Manhattan',   'place',  12),
+  ('Empire State Building',                        'Manhattan',   'place',  13),
+  ('Madison Square Garden',                        'Manhattan',   'place',  14),
+  ('Barclays Center',                              'Brooklyn',    'place',  15),
+  ('Yankee Stadium',                               'Bronx',       'place',  16),
+  ('Citi Field',                                   'Queens',      'place',  17),
+  ('MetLife Stadium',                              'New Jersey',  'place',  18)
+ON DUPLICATE KEY UPDATE area = VALUES(area), kind = VALUES(kind), sort_order = VALUES(sort_order);
+
+-- ---------------- contact_submissions: what the contact form was sent -------
+-- legal/contact.php used to send an email, write one audit row holding the
+-- email address, and throw the name, phone and message away. With mail off
+-- nothing was delivered and nothing was stored, so a message sent through the
+-- form simply ceased to exist. This is the inbox those writes land in.
+--
+-- `status` exists because an inbox without a way to clear it is just a list
+-- that grows: 'new' until an admin opens it and marks it handled.
+--
+-- No IP or user-agent is stored. A contact form does not need it to be useful,
+-- and not collecting it is cheaper than explaining why you did.
+CREATE TABLE IF NOT EXISTS contact_submissions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  phone VARCHAR(40) DEFAULT NULL,
+  message TEXT NOT NULL,
+  status ENUM('new','handled') NOT NULL DEFAULT 'new',
+  handled_at DATETIME DEFAULT NULL,
+  handled_by BIGINT UNSIGNED DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_contact_status_time (status, created_at),
+  KEY idx_contact_email (email),
+  CONSTRAINT fk_contact_handled_by FOREIGN KEY (handled_by) REFERENCES admins(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------- admin_nav_seen: has this admin looked at that section yet ---
+-- A sidebar badge is only worth showing for something you have NOT seen. Once
+-- the office opens the Groups page, the two inquiries are in front of them and
+-- the badge is noise; it should come back only when something newer arrives.
+--
+-- `seen_at` is stamped when the page is opened, and compared against the newest
+-- row that the badge counts, so "new" means newer than your last visit rather
+-- than "exists".
+--
+-- Per admin, not global: two people working the same desk each get their own
+-- read state, which is the whole point of a badge.
+CREATE TABLE IF NOT EXISTS admin_nav_seen (
+  admin_id BIGINT UNSIGNED NOT NULL,
+  section VARCHAR(64) NOT NULL,
+  seen_at DATETIME NOT NULL,
+  PRIMARY KEY (admin_id, section),
+  CONSTRAINT fk_nav_seen_admin FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------- faq_groups / faqs: seed -------------------------------
+-- These are the fourteen questions legal/faq.php has always shipped with, moved
+-- into the database so the desk can edit them. The page still holds the same
+-- list as a fallback for a fresh checkout, but a row here is what the editor
+-- shows - so without this the tab would look empty while the public page was
+-- full of questions nobody could reach.
+INSERT INTO faq_groups (slug, label, sort_order) VALUES
+  ('booking', 'Booking', 1),
+  ('pricing', 'Pricing & Payment', 2),
+  ('rides',   'Rides', 3),
+  ('account', 'Account', 4)
+ON DUPLICATE KEY UPDATE label = VALUES(label), sort_order = VALUES(sort_order);
+
+INSERT INTO faqs (group_id, question, answer, icon, sort_order, is_active)
+SELECT g.id, src.ques, src.ans, src.ic, src.so, 1
+FROM (
+  SELECT 'booking' grp, 'How many stops can I add?' ques, 'Up to 6 additional stops on point-to-point rides. Add them while booking and each is priced transparently.' ans, 'pin' ic, 1 so
+  UNION ALL SELECT 'booking', 'What is the hourly minimum?', '2 hours. Add more time in half-hour steps — never less than 2.', 'clock', 2
+  UNION ALL SELECT 'booking', 'Can I change my pickup time?', 'Yes, until 2 hours before pickup — from your account or by contacting us. Changes inside the cutoff cannot be accepted.', 'edit', 3
+  UNION ALL SELECT 'booking', 'Do you need my flight number?', 'No. Airport service is address-based: we drive airport to address or address to airport, with 60 minutes of free waiting.', 'plane', 4
+  UNION ALL SELECT 'pricing', 'How is my price calculated?', 'Per-mile or hourly depending on the active pricing mode, plus any add-ons and tolls. The total is calculated on our servers and frozen before you pay — never from browser totals.', 'tag', 1
+  UNION ALL SELECT 'pricing', 'How do I pay?', 'Secure card payment through Stripe, a single-use secure payment link, or an arranged offline payment recorded by our team.', 'card', 2
+  UNION ALL SELECT 'pricing', 'Do I get an invoice?', 'Yes. Every booking produces an invoice you can view in your account and download as PDF.', 'doc', 3
+  UNION ALL SELECT 'pricing', 'What about waiting charges?', 'Extra waiting is $15 per 10 minutes and is added to a pending invoice afterwards. We never silently auto-charge your card.', 'coin', 4
+  UNION ALL SELECT 'rides', 'How much free waiting do I get?', 'Airports 60 minutes, bus, train and cruise terminals 30 minutes, point-to-point 15 minutes.', 'time', 1
+  UNION ALL SELECT 'rides', 'Do you provide child seats?', 'Yes. Add a child seat or booster seat while booking and it will be in the car on arrival.', 'seat', 2
+  UNION ALL SELECT 'rides', 'Will I get the exact car I booked?', 'We confirm your vehicle class with dispatch. On rare occasions a substitution may occur — always like-for-like or better.', 'car', 3
+  UNION ALL SELECT 'account', 'Do I need an account to book?', 'No. Guest checkout works for every service. An account lets you manage bookings, invoices and pickup changes in one place.', 'user', 1
+  UNION ALL SELECT 'account', 'How do cancellations work?', 'Request cancellation from the cancellation page with your booking number and email. Paid bookings are refunded per our published policy.', 'x', 2
+  UNION ALL SELECT 'account', 'How do I reach support?', 'Use the contact page and our team will respond. For urgent ride-day issues, call the number in your confirmation email.', 'chat', 3
+) AS src
+JOIN faq_groups g ON g.slug = src.grp
+-- Re-running the seed must not double the questions.
+WHERE NOT EXISTS (SELECT 1 FROM faqs f WHERE f.question = src.ques);
+
+-- ---------------- page_block_revisions: what the field held before the last save ----------------
+-- Written on every save, before the new value lands. This is what makes
+-- "Restore previous content" a real operation rather than a button that cannot
+-- do anything: it replays the newest revision set for a page.
+--
+-- Deliberately append-only, and never cascaded away. A marketing page that can
+-- only be edited forwards is not an editor, it is a launch button.
+CREATE TABLE IF NOT EXISTS page_block_revisions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  page_slug VARCHAR(80) NOT NULL,
+  batch_id BIGINT UNSIGNED NOT NULL,
+  field_key VARCHAR(80) NOT NULL,
+  old_value MEDIUMTEXT NULL,
+  changed_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_pbr_page_batch (page_slug, batch_id),
+  KEY idx_pbr_admin (changed_by),
+  CONSTRAINT fk_pbr_admin FOREIGN KEY (changed_by) REFERENCES admins(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------- settings ----------------
 CREATE TABLE IF NOT EXISTS settings (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,

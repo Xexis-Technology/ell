@@ -48,7 +48,7 @@ $unseen = ($driverUser && $pdoRef)
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20261008b') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
 <link rel="stylesheet" href="<?= asset('css/driver.css?v=20261011c') ?>">
 </head>
 <body class="driver font-ui<?= $authPage ? ' drv-auth' : '' ?><?= $widePage ? ' is-wide' : '' ?>">
@@ -101,7 +101,7 @@ $unseen = ($driverUser && $pdoRef)
   </aside>
 
   <div class="drv-col">
-    <div class="drv-top">
+    <div class="drv-top" data-toast-clear>
     <?php /* The clearance band travels with the header, so "am I cleared?" is
              answerable at any scroll depth on any page - not just at the top. */ ?>
     <?php if ($clearance): ?>
@@ -199,6 +199,7 @@ $unseen = ($driverUser && $pdoRef)
   <?php endforeach; ?>
 </nav>
 <script src="<?= asset('js/driver.js?v=20261010c') ?>" defer></script>
+<script src="<?= asset('js/alerts.js?v=20261014b') ?>" defer></script>
 <script src="<?= asset('js/camera.js?v=20261010a') ?>" defer></script>
 <?php endif; ?>
 </body>

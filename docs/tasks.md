@@ -619,3 +619,585 @@ Status values: Pending | In Progress | Completed | Partial | Blocked | Failed | 
 - First admin creation via scripts/create_admin.php (interactive, no invented credentials)
 - Production deploy (Ubuntu/Nginx) per docs/DEPLOYMENT.md + APP_DEBUG=false + HTTPS/HSTS
 - Manual responsive pass on physical devices (viewports/breakpoints implemented; meta viewport on all layouts)
+
+---
+
+## 2026-10-13 — User Page Design Manager (content editing for the 8 public pages)
+
+**Status:** Completed and verified (39 browser assertions, 0 console errors)
+
+### Requirement
+One admin page to edit the words and pictures on Homepage, Service Overview,
+Point-to-Point, Airport Transportation, Hourly Charter, Group & Event,
+Direct Contract and Contact — without letting the admin redesign anything.
+
+### Files created
+- `app/PageContent.php` — the content registry + accessors
+- `admin/user-page-design.php` — the tabbed editor
+
+### Files modified
+- `database/database.sql` — + `page_blocks`, + `page_block_revisions`
+- `app/bootstrap.php` — require PageContent
+- `views/layouts/admin.php` — sidebar entry "User Page Design", CSS cache bump
+- `assets/css/admin.css` — `.upd-*` styles
+- `index.php`, `services/{index,point-to-point,airport,hourly,group-event,direct-contract}.php`,
+  `legal/contact.php` — read their content from the registry with the original
+  copy as the built-in default
+
+### Database changes
+- `page_blocks`: one row per editable field. `UNIQUE(page_slug, field_key)`.
+- `page_block_revisions`: previous value per field per save batch, so
+  "Restore previous version" replays something real.
+
+### Decisions worth keeping
+1. **A heading with inline markup is edited as its parts.** The hero `<h1>`
+   carries a `<br>` and a champagne `<em>`; exposing it as one free-text field
+   would let a comma delete a design decision. So `hero_title_lead` /
+   `_accent` / `_tail` are separate fields and the template keeps the tags.
+2. **Button destinations are a closed `<select>`, not a text box.** There is
+   no way to express `javascript:` if a field can only hold a route from
+   `PageContent::LINKS`.
+3. **Defaults are the copy the pages ship with today.** A missing row therefore
+   cannot blank a page — it renders exactly what it rendered before.
+4. **Contact phone/email/address are NOT editable here.** They are company
+   settings used by every page and by search results; editing them in two
+   places is how they drift. The page links to Settings instead.
+5. **No fake drafts.** The project had no draft system, so none was pretended:
+   save, preview and a real restore backed by the revisions table.
+
+### Bugs found & fixed
+1. `flash('msg', '')` **writes** an empty message — `flash()` decides
+   read-vs-write on `func_num_args()`. Every save silently produced no banner.
+   Switched to the panel's existing `?ok=` / `?err=` PRG convention.
+2. A "keep as it is" link selection resolved to `''` and stored an empty
+   string, blanking the button until the next save. Now resolves through the
+   field default; the option is labelled "revert to the site default".
+3. Restore only issued `UPDATE`, so a field whose previous value was "no stored
+   row" was set to `NULL` and rendered as an empty heading. NULL old values now
+   DELETE the row so the default returns.
+4. `services/{point-to-point,airport,hourly}.php` never created `$pdo`; adding
+   a content read to them needed `Database::pdo()` first.
+
+### Tests (all passing)
+- anonymous request bounced to login; POST without CSRF refused and changed nothing
+- all 8 tabs load their own sections (12–72 fields each)
+- unsaved pages fall back to the original copy, byte-identical
+- text edit lands on the correct page only; `<br>` and `<em>` survive
+- image upload live on the public page; PHP-renamed-.png, undersized and .txt
+  all refused **with the existing image left intact**; remove reverts to default
+- upload directory returns 403; removed file stops being served
+- link field is a closed select of internal routes; no `javascript:` on output
+- restore previous version really restores
+- edited meta description reaches `<head>`
+- hero type/accent classes unchanged; no horizontal overflow at 1440/1024/768/390
+
+### Next
+Owner review of copy. No follow-up work required for the feature itself.
+
+---
+
+## FAQ manager (added to User Page Design Manager)
+
+A ninth tab in `admin/user-page-design.php` so the desk can add, edit, reorder,
+hide and delete the questions on `legal/faq.php`, plus add and rename the
+categories they sit under. Questions are **rows**, not fields - a fixed field
+list cannot express "add one" or "move this up" - so they live in two new
+tables, `faq_groups` and `faqs`, and the editor drives them through the same
+POST endpoint as the text fields.
+
+### What the admin can do
+| Action | How | Endpoint |
+| --- | --- | --- |
+| Edit a question or answer | type in the row | `op=save` (autosave) |
+| Change the icon | per-row select | `op=save` (autosave) |
+| Hide a question | untick **Shown** | `op=save` (autosave) |
+| Add a question | form under the list | `op=faq_add` |
+| Move up / down | per-row arrows | `op=faq_move` |
+| Delete a question | per-row `×` | `op=faq_delete` |
+| Add a category | form under the list | `op=faq_group_add` |
+| Rename a category | per-row form | `op=faq_group_rename` |
+| Delete a category | per-row `×`, refused while it holds questions | `op=faq_group_delete` |
+
+### Decisions
+- **The 14 built-in questions are the fallback, not the seed.** Until an admin
+  saves a question, `legal/faq.php` renders exactly the list it has always
+  shipped, and if the tables ever go away the page still renders. An empty
+  `faqs` table means "use the built-ins", never "show nothing".
+- **No SEO section on the FAQ tab.** `legal/faq.php` already takes its title and
+  description from `content_seo('faq')`, which `admin/cms.php` owns. A second
+  copy would give one tag two owners.
+- **Icons are a closed list** (`PageContent::FAQ_ICONS`), because the page inlines
+  them as raw SVG path data. An unknown name falls back to `pin` rather than
+  rendering an empty box.
+- **A category with no live questions gets no pill.** An empty tab is worse than
+  a missing one - a rider who taps it sees nothing.
+- **Row indexes run across all categories, not per category.** The inputs post
+  as `faq_q[0..n]` alongside `faq_id[0..n]` and the server walks them in step, so
+  a per-category counter would point every question after the first at the wrong
+  row.
+- JSON-LD is built from whatever the page is actually showing, so a hidden
+  question is not claimed in the structured data.
+
+### Bugs found and fixed along the way
+- **Reorder picked the wrong neighbour.** `sort_order < mine ORDER BY sort_order ASC`
+  returns the *lowest* row above, not the nearest. Moving up must order `DESC`.
+  The swap also wrote the same value to both rows, so nothing appeared to move.
+- **Clearing a field blanked the page instead of restoring the default.** The
+  loop that deletes a row on an empty submit was unreachable, because the empty
+  value had already been put into `$values`. A stored empty value beats the
+  default in `page_content()`, so the heading went blank. Leave the key out of
+  `$values` and let the delete loop run.
+- **A bad link was silently swapped for the default.** The guard was
+  `if ($safe === '' && $raw !== '')`, but `safe_link()` returns the *default* for
+  an unrecognised value, so that branch could only fire when the default was also
+  empty. Membership in `LINKS` is now checked directly, and the admin is told.
+- **`href="Contact us"`.** `page_content()` hands back a link field's default
+  verbatim, and that default is a *label*. Every other public page resolves it
+  with `safe_link()` before calling `url()`; the FAQ page now does too.
+- **Broken attribute from `json_encode`.** `x-data="{cat:<?= json_encode($x) ?>}"`
+  emits double quotes that terminate the attribute, so `cat` was never defined
+  and every pill threw. Needs `e(json_encode($x, JSON_HEX_APOS|JSON_HEX_QUOT))`.
+
+### Tests (98 assertions, all passing)
+- auth gate; signed-out access bounced, bad CSRF refused and changed nothing
+- all 9 tabs load; the other 8 carry no FAQ inputs and still save and restore
+- add / edit / hide / move up / move down / delete, each refusing a second time
+  safely; a move at the top of a list is a no-op
+- a hidden question disappears from the page and from the JSON-LD
+- blank question, blank answer and unknown category all refused
+- an icon name that is not in the list falls back to `pin`, and markup is never stored
+- duplicate category labels get distinct slugs; a category holding questions
+  cannot be deleted
+- heading / intro / link autosave and reach the page; clearing them restores the
+  built-in wording; an off-site link is refused and the good value survives
+- public page: 4 pills and 14 questions from the fallback, 14 JSON-LD nodes
+- no console errors, no horizontal overflow at 1440 or 390
+
+---
+
+## Locations manager (Settings) + location picker
+
+`admin/settings.php` gained a **Locations** section. The places a rider can be
+picked up or dropped off are now rows in a `locations` table instead of a list
+hardcoded in two places, and the desk can add one by hand, set its type, rename
+it, hide it, reorder it or remove it.
+
+### Why it moved
+The picker list lived twice - `assets/js/booking.js` and `index.php` - as two
+independent literals. They could drift, and neither could be edited from the
+admin. Both now read one table.
+
+### The table
+| Column | What it is |
+| --- | --- |
+| `label` | what the rider sees, and what gets booked. Unique. |
+| `area` | borough or region, shown beside the name |
+| `kind` | `airport`, `rail`, `bus`, `cruise` or `place` |
+| `sort_order` | picker order |
+| `is_active` | "Offered" - a hidden place stays in the editor but leaves the picker |
+
+Seeded with the 18 places the site already offered, in the same order, so the
+picker is unchanged on first load. `locations()` keeps a hardcoded fallback
+identical to the seed, so the form still works on a checkout that has not run
+the schema.
+
+### One subtlety worth remembering
+`kind` and the picker's filter are **not** the same thing. The picker only
+offers two chips, "Airports" and "Everything else", so `locations_json()` maps
+`kind` onto that coarser value: airport -> `airport`, everything else ->
+`road`. Passing `kind` through directly made rail, bus and cruise locations
+vanish the moment the "Everything else" chip was switched on. The finer type
+still shows in the display line, as "Area · Kind".
+
+### The JSON payload
+Both pages emit it the way `admin/dispatch.php` already did:
+`<script type="application/json" id="locData">` with
+`JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT`, read back with
+`JSON.parse(...).textContent`. A location named `</script><script>alert(1)</script>`
+cannot break out of the tag. `index.php` reads it into `window.__locations`
+before the script that builds the Alpine component, because that object literal
+is evaluated the moment the script runs.
+
+### Tests (30 assertions, all passing)
+- signed out is redirected and never sees the rows
+- the 18 seeded rows render with all five types offered
+- add: row created, type and area saved, appears in **both** pickers, and the
+  display line reads "New Jersey · Airport"
+- blank name, duplicate name refused; an unknown type falls back to `place`
+- edit: name, area and type change, and both pickers follow
+- a `place` shows no type suffix and filters under "Everything else"
+- hide: gone from both pickers, still listed in Settings
+- reorder: the top of the list changes and both pickers agree
+- delete: removed from both pickers; deleting twice is safe
+- bad CSRF adds nothing; `location.*` written to the audit log
+- the DB list reproduces both old hardcoded copies byte-for-byte
+- no horizontal overflow at 1440 or 390, no console errors
+
+---
+
+## Settings split into two tabs
+
+`admin/settings.php` is now two tabs rather than one long scroll:
+
+| Tab | `?tab=` | Holds |
+| --- | --- | --- |
+| **Settings** | `settings` (default) | passkeys, the three integration cards, "How the office works" |
+| **Locations** | `locations` | the location list, add form and the move/remove helper |
+
+### Rendered on the server, not toggled in JavaScript
+This is the whole design decision, and it was driven by how the page already
+works. Every form here is a POST that redirects back to itself, so a tab held
+only in the browser would drop the admin on **Settings** after saving a
+location, and the tab bar would be inert without JS. Instead `?tab=` is
+validated against a closed list and the branch is chosen in PHP:
+
+```php
+$tab = (string)($_GET['tab'] ?? 'settings');
+if (!in_array($tab, ['settings', 'locations'], true)) $tab = 'settings';
+```
+
+The bar is still real ARIA (`role="tablist"` / `role="tab"` /
+`aria-selected`), just implemented as two links - so it survives no-JS and the
+URL is shareable. The `in_array` allowlist is also what stops
+`?tab=../../etc/passwd` or a quote-breakout attempt from reaching the output.
+
+### The part that would have bitten
+Each location operation redirects to `?tab=locations`. Left as the old
+`#locations` anchor, the redirect would have landed on the Settings tab with
+the anchor pointing at an element that no longer existed in the DOM - the
+admin would have saved a location and been shown the wrong page. `loc_move` had
+the same problem in a second form (`settings.php#locations`, no `?`).
+
+### Housekeeping
+- Each tab only ships the script it needs: the passkey enrolment script is not
+  sent to the Locations tab, and `stLocOp()` is not sent to the Settings tab.
+- The per-type tally moved up into the page header, so each tab's header
+  describes only what that tab holds. Only the "N hidden" chip stayed in the
+  body, because that is the one figure you cannot read off the header without
+  counting by hand.
+- `admin.css` cache version bumped to `20261013c`.
+
+### Tests (33 assertions, all passing)
+- no `?tab=` means Settings; two `role="tab"` links; the right one is current
+- Settings tab shows passkeys, integration tally and operations - and no
+  location rows, no `stLocOp`
+- Locations tab shows all rows and the add form - and no passkeys, no
+  operations, no passkey script, and no duplicated `<h1>`
+- a junk or injected `?tab=` falls back to Settings and leaks nothing
+- add / save / move / delete all redirect back to `?tab=locations` with a flash
+- `save_ops` still works and the setting really changes
+- bad CSRF on the Locations tab adds nothing
+- browser: clicking through to Locations, adding a location, flash shown, new
+  row present without navigating, and the location reaches the homepage picker
+- zero horizontal overflow on both tabs at 1440 and 390; no console errors
+
+### Locations list: mobile layout + Add moved to the top
+
+Two fixes to the Locations tab, both found by measuring rather than by looking.
+
+**1. The row collapsed to 0px on a phone.** The row was a four-column grid and
+its five children were left to auto-place. `.st-loc-tools` had no column of its
+own, so on the second line it landed in column 1 and stretched that column from
+the 24px number badge to 98px, while the type select (min 7.5rem) and the
+nowrap "Offered" label took the rest. Measured at 390px the row was rendering
+as `98px 0px 120px 62px` - the name and area inputs had **zero** width.
+
+The fix places every part explicitly on narrow screens, as a two-column stack:
+
+```
+[1]  Name
+    Area
+[ Type select, full width ]
+[✓ Offered]                     [↑ ↓ ×]
+```
+
+and the five-across layout returns at `min-width:760px`. Same 390px row now
+measures `main=230 name=230`, and nothing spills outside its own row at 390 /
+768 / 1440.
+
+**2. "Add a location" moved above the list.** It was the last thing on the tab,
+so adding one meant scrolling past eighteen rows first. It now sits directly
+under the "hidden" tally, in its own card, and the list's **Save locations**
+button picked up a top rule (`.st-loc-savebar`) so the two forms do not run
+together. Done at every width, not just mobile - the same argument applies to a
+desktop list of nineteen.
+
+### Tests (19 assertions + browser pass, all passing)
+- both tabs still split cleanly; exactly one add form and one list form
+- the add form precedes the list in the markup, fields intact
+- add / save / move / hide / delete all still work and reach both pickers
+- a hidden row stays listed in the editor
+- `save_ops` on the other tab unaffected
+- measured at 390 / 768 / 1440: no page overflow, no part spilling its row
+- add form confirmed above the list in the rendered DOM
+
+---
+
+## Location picker: a typed search now beats the type chip
+
+The **Road** / **Airport** chips were hiding results the rider could see with
+their own eyes. Reproduced on the homepage and the booking form, identically:
+
+| State | Before | After |
+| --- | --- | --- |
+| no chip, search "Kennedy" | 1 (JFK) | 1 |
+| **Road chip on, search "Kennedy"** | **0 - "No matches"** | **1 (JFK)** |
+| **Airport chip on, search "stadi"** | **0 - "No matches"** | **2 (Yankee, MetLife)** |
+| Road chip on, no search | 15 | 15 |
+
+JFK is the **first row of the list**. Tapping Road and typing "Kennedy"
+produced "No matches - tap the button above to use your entry", so the rider
+typed the airport as a free-text address and lost the saved location, the area
+and the correct `t` the picker would have given them.
+
+The old filter ANDed the two conditions:
+
+```js
+(!this.locType || l.t === this.locType) && (!q || (l.v + ' ' + l.a).includes(q))
+```
+
+A filter that hides a literal match for what someone just typed is always
+wrong. The chips narrow what you are **browsing**; they are not a hard gate.
+Now the query is checked first and the chip only applies when the box is empty:
+
+```js
+return this.locs.filter(l => {
+  if (q) return (l.v + ' ' + l.a).toLowerCase().includes(q);
+  return !this.locType || l.t === this.locType;
+});
+```
+
+Fixed in **both** copies - `index.php` (inline `tripSlip()`) and
+`assets/js/booking.js` (shared `bookingPage()`). They are separate
+implementations of the same component, so a fix in one is invisible in the
+other; both were changed and both asserted.
+
+### The chip stops lying about itself
+A gold "selected" chip that is not filtering anything is worse than no chip, so
+while there is a query the group drops to 35% opacity and says why in its
+`title`: "Not filtering while you search - every match is shown". No layout
+shift, and the state is still there when the box is cleared.
+
+### Tests
+- all six chip/query combinations driven in a real browser, on both pages
+- picking a result still fills the field (JFK verified into `#pickup`)
+- an unknown address still offers "Use ... as address" alongside "No matches"
+- chip opacity and title confirmed to change with the query
+- both filter copies carry the fix; the old AND-filter is gone from both
+- payload unchanged and identical on both pages: 18 locations, 3 airport /
+  15 road, JFK first
+- FAQ, locations table and the admin password all untouched
+
+---
+
+## Location picker: all five location types are now filterable
+
+The office manages five kinds in **Settings → Locations** (3 airport, 2 rail,
+1 bus, 3 cruise, 9 place) but the picker's chips were hardcoded as **Road** and
+**Airport**. Rail, bus, cruise and place had no filter at all - a rider could
+only ever reach them by scrolling or by typing.
+
+The cause was in `locations_json()`, which deliberately collapsed the kind:
+
+```php
+'t' => $l['kind'] === 'airport' ? 'airport' : 'road'
+```
+
+That collapse existed because the picker only had two chips and a rail terminal
+would have vanished the moment "road" was switched on. Now that the chips match
+the office's five categories, the value is passed through untouched.
+
+### Chips are built from the data, not typed into the markup
+```js
+locKinds() {
+  const counts = {};
+  (this.locs || []).forEach(l => { counts[l.t] = (counts[l.t] || 0) + 1; });
+  return order.filter(k => counts[k]).map(k => ({ v: k, l: labels[k], n: counts[k] }));
+}
+```
+So the chips and their counts are always whatever the office actually has. A
+category with no locations gets no chip rather than a dead one, and adding a
+`cruise` location in Settings makes a Cruise chip appear with the right count -
+no code change. Order is how riders think: airports first, then terminals, then
+landmarks.
+
+### Multi-select
+`locType` became `locTypes`, an array. The old pair of chips was mutually
+exclusive; with five categories, tapping Airports and Cruise together is the
+natural gesture, and `aria-pressed` reports each chip's state.
+
+Search still wins over the chips (unchanged), and the chips still dim to 35%
+while a query is active.
+
+### Tests (30 assertions + browser pass, all passing)
+- payload carries five kinds, none collapsed; counts 3/2/1/3/9 = 18 and match
+  the database exactly; the `road` value is gone from all three files
+- both component copies (`index.php`, `assets/js/booking.js`) carry
+  `locKinds()`, `toggleLocType()`, the array state and `types.includes()`
+- both pages render chips via `x-for="k in locKinds()"` with `aria-pressed`
+- driven in a browser on both pages: each chip filters to its own count
+  (3/2/1/3/9), Airports + Cruise gives 6, and searching "Kennedy" with chips on
+  still finds JFK with the chips dimmed
+- the fallback location used when `#locData` is missing now carries a real kind
+  (`place`), because a kind matching no chip would have made that row invisible
+- FAQ, locations table and the admin password all untouched
+---
+
+## Credit line: "By openIntelix" - text only, on every page
+
+Shown on **every** public page inside the newsletter block, positioned between
+the "One email at a time, never spam. Unsubscribe anytime." line and the
+subscribe input.
+
+| | |
+| --- | --- |
+| Markup | `views/partials/credits.php` |
+| Included by | `views/layouts/public.php:290`, unconditional, before the newsletter `<form>` |
+| Renders | `By <a>openIntelix</a>` |
+| Link target | `https://x.com/openIntelix` (`target="_blank"`, `rel="noopener noreferrer"`) |
+| Styles | `.pc-credits` / `.pc-credit-x` in `assets/css/app.css`, cache key `20261013d` |
+
+It hangs off the shared layout, so "every page" cost one line rather than a
+flag on each page.
+
+### No logo
+This went through three shapes. The logo was a 400x400 PNG with a **white
+background**, so on a near-black page it rendered as a large white block; two
+attempts to clip and crop it to the mark were not worth the CSS, and the owner
+asked for text only. The image, the `iili.io` request and every
+`.pc-credit-logo` rule are gone - the page now makes **zero** requests to that
+host. The name links to the profile instead, in the site's champagne, with an
+underline and a focus ring.
+
+### Tests (53 assertions + browser pass, all passing)
+- all twelve public pages render clean and carry the line and the X link
+- position confirmed in the DOM: below the blurb, above the `<form>`, above the
+  input, above the Subscribe button
+- the logo really is gone: no `iili.io`, no `<img>`, no `.pc-credit-logo`, and
+  none of the old 140/151/178px crop sizes left in the CSS
+- reads "By openIntelix"; `rel="noopener noreferrer"`; the link text is the name,
+  not a URL
+- browser: clicking it opens `https://x.com/openIntelix`; 0 image requests to
+  iili.io; no overflow at 1440 or 390; no console errors
+
+---
+
+## Group events: newest first, and sidebar count badges
+
+### 1. Group events ordering
+`admin/group-events.php` fetched newest-first from SQL (`created_at DESC, id
+DESC`) and then **undid it**: the per-stage `usort` compared `$b['age'] <=>
+$a['age']`, putting the *oldest* inquiry at the top of its stage. Proven on
+live data - an inquiry from today (id 26) was rendering below one from 18 days
+ago (id 1).
+
+Now `$a['age'] <=> $b['age']`, with `id` as the tiebreak so two inquiries from
+the same day keep a stable order. Stage order is unchanged: new, quoted,
+confirmed, declined, closed.
+
+### 2. Sidebar badges
+`admin_nav_counts(PDO $pdo)` returns `page => count` for the pages where a
+number means "a person needs to act", and the sidebar renders it as a badge.
+**One query, nine subselects** - nine separate COUNT() round trips on every
+admin page load is a real tax.
+
+| Link | Badge is |
+| --- | --- |
+| Bookings | awaiting pricing (the dashboard's own definition) |
+| Dispatch | confirmed, nobody assigned yet |
+| Customers | signups in the last 7 days |
+| Drivers | pending applications (dashboard's definition) |
+| Payments | failed payments |
+| Payouts | requested payouts (dashboard's definition) |
+| Groups | new inquiries |
+| Notifications | failed email deliveries |
+| Blog | drafts |
+
+Dashboard, Vehicles, Pricing, Earnings, Reports, User Page Design, CMS, Settings
+and Audit show nothing on purpose. A badge of "312 customers" or "1,404 reports"
+tells an admin nothing they can act on, and once you show numbers like that the
+whole sidebar stops being glanceable. The three stateful counts reuse the
+dashboard's queries so a badge can never contradict it.
+
+`admin_badge()` caps at `99+`, and the label is allowed to shrink with the badge
+pinned right, so a three-digit count cannot push "User Page Design" out of the
+sidebar. The badge's `title` keeps the true number.
+
+A missing table returns `[]` rather than taking the admin area down with it.
+
+### Tests (20 assertions + browser pass, all passing)
+- group events: ascending age within each stage, newest at the top, id 26 above
+  id 1, and the old comparison is gone from the source
+- counts match the underlying queries, and with the dashboard's definitions for
+  drivers and payouts
+- only positive counts are returned; no page with nothing actionable appears
+- `admin_badge()`: 1->1, 7->7, 99->99, 100->99+, 5000->99+
+- browser: 4 of 18 links badged, every badge has a title, badge right-aligned,
+  **0 labels clipped** by a badge, no overflow at 1440 or 1280
+- the cap proven in the live DOM by inflating Notifications to 117: badge
+  rendered `99+`, title "117 items here need attention", then cleaned back to 37
+  exactly with no probe rows left
+
+### Worth the owner's attention
+**Notifications shows 37 - every queued email in the table has failed**,
+spanning three weeks (`driver-status-update`, `booking-received-awaiting-pricing`,
+`refund-processed`, `booking-confirmed`, `payment-link`...). `.env` has the mail
+keys filled in, so either the credentials are wrong or nothing has retried them.
+Customers may be getting no confirmation emails at all. The badge is only
+reporting it; the underlying delivery is the thing to look at.
+
+---
+
+## Newest-first across the admin, and badges that hide themselves
+
+### 1. Ordering
+Audited every `ORDER BY` in `admin/*.php` and split the results in two.
+
+**Changed - record lists an admin works through, so a new row must lead:**
+
+| Page | Was | Now |
+| --- | --- | --- |
+| Customers | `spend DESC, name ASC` | `c.created_at DESC, c.id DESC` |
+| Payouts (queue) | `requested_at ASC` | `requested_at DESC, p.id DESC` |
+| Payouts (a payout's lines) | `e.earned_at ASC, e.id ASC` | `e.earned_at DESC, e.id DESC` |
+| Settings (passkeys) | `created_at` | `created_at DESC, id DESC` |
+
+Customers is the one worth knowing about: it ranked by spend, so a client who
+joined this morning was buried under the existing book - exactly backwards for a
+client list. Spend is still selected and still shown, just not used to sort.
+
+**Left alone deliberately - ordered for lookup, not recency:** drivers by name,
+vehicles by make/model, vehicle categories, coupons by code, dispatch by trip
+time, reports by date, the FAQ and location `sort_order`, and passkey/setting
+lists the owner positions by hand. Flipping a roster to "newest first" breaks
+the only thing you use it for - finding a name you already half-remember.
+
+Already correct and verified untouched: bookings (pickup_date DESC), audit
+(id DESC), blog, notifications, payments (both lists), group events.
+
+### 2. Badge suppressed on the current page
+```php
+$n = ($navActive === $f) ? 0 : (int)($navCounts[$f] ?? 0);
+```
+
+A badge means "go look at this". On the page you are already looking at, the
+thing is on screen, so the count is noise there. It returns the moment you
+navigate away.
+
+Observed from four pages, same sidebar:
+
+| Viewing | Badge on itself | Other badges |
+| --- | --- | --- |
+| Dashboard | n/a | Bookings 6, Dispatch 1, Groups 2, Notifications 37 |
+| **Bookings** | **hidden** | Dispatch 1, Groups 2, Notifications 37 |
+| **Groups** | **hidden** | Bookings 6, Dispatch 1, Notifications 37 |
+| **Notifications** | **hidden** | Bookings 6, Dispatch 1, Groups 2 |
+
+### Tests (19 assertions + browser pass, all passing)
+- the four new orderings are present; no `ASC` date sort is left on a record list
+- six already-correct lists verified byte-identical, and four rosters verified
+  still ordered for lookup
+- live data: customer dates descend; payouts descend inside each status group
+- suppression keyed on `$navActive`, with the count still fetched for other pages
+- browser: all 18 admin pages return 200 and render clean; badge state confirmed
+  from four different pages; no console errors

@@ -112,32 +112,27 @@ function bookingPage(pref) {
     dateOpen: false, timeOpen: false, calY: null, calM: null,
     dateTimeErr: false,
     locOpen: false, locFor: 'pickup', stopIdx: null,
-    locQuery: '', locType: '',
-    locs: [
-      {v: 'John F. Kennedy International Airport (JFK)', a: 'Queens · Airport', t: 'airport'},
-      {v: 'LaGuardia Airport (LGA)', a: 'Queens · Airport', t: 'airport'},
-      {v: 'Newark Liberty International Airport (EWR)', a: 'New Jersey · Airport', t: 'airport'},
-      {v: 'Moynihan Train Hall, Penn Station', a: 'Manhattan · Rail', t: 'road'},
-      {v: 'Grand Central Terminal', a: 'Manhattan · Rail', t: 'road'},
-      {v: 'Port Authority Bus Terminal', a: 'Manhattan · Bus', t: 'road'},
-      {v: 'Manhattan Cruise Terminal', a: 'Manhattan · Cruise', t: 'road'},
-      {v: 'Brooklyn Cruise Terminal', a: 'Brooklyn · Cruise', t: 'road'},
-      {v: 'Wall Street Piers', a: 'Manhattan · Cruise', t: 'road'},
-      {v: 'Times Square', a: 'Manhattan', t: 'road'},
-      {v: 'Central Park South', a: 'Manhattan', t: 'road'},
-      {v: 'World Trade Center', a: 'Manhattan', t: 'road'},
-      {v: 'Empire State Building', a: 'Manhattan', t: 'road'},
-      {v: 'Madison Square Garden', a: 'Manhattan', t: 'road'},
-      {v: 'Barclays Center', a: 'Brooklyn', t: 'road'},
-      {v: 'Yankee Stadium', a: 'Bronx', t: 'road'},
-      {v: 'Citi Field', a: 'Queens', t: 'road'},
-      {v: 'MetLife Stadium', a: 'New Jersey', t: 'road'}
-    ],
+    locQuery: '', locTypes: [],
+    /*
+     * Locations come from the database, handed over by the page as JSON in
+     * #locData. They used to be this literal list, duplicated in index.php, and
+     * neither copy could be edited from the admin. The fallback below only runs
+     * if the payload is missing, so the picker is never empty.
+     *
+     * Its `t` must be a real kind - the chips are built from these values, so
+     * a kind that matches nothing would leave this row invisible the moment any
+     * chip was switched on.
+     */
+    locs: (function () {
+      var el = document.getElementById('locData');
+      if (el) { try { var d = JSON.parse(el.textContent); if (Array.isArray(d) && d.length) return d; } catch (e) {} }
+      return [{v: 'Times Square', a: 'Manhattan', t: 'place'}];
+    })(),
     // ---- locations ----
     routeErr: '',
     openLoc(which, i) {
       this.locFor = which; this.stopIdx = (i === undefined ? null : i);
-      this.locQuery = ''; this.locType = ''; this.routeErr = ''; this.locOpen = true;
+        this.locQuery = ''; this.locTypes = []; this.routeErr = ''; this.locOpen = true;
       this.$nextTick(() => { if (this.$refs.locSearch) this.$refs.locSearch.focus(); });
     },
     setLocValue(v) {
@@ -165,9 +160,49 @@ function bookingPage(pref) {
       this.routeErr = '';
       this.setLocValue(v); this.locOpen = false;
     },
+    /*
+      The type chips, built from the data rather than hardcoded in the markup.
+
+      The picker used to offer exactly two - Road and Airport - while the office
+      manages five kinds in Settings, so rail, bus, cruise and place had no
+      filter at all. These are derived from `locs`, so a category that has
+      locations gets a chip with a count and one that has none simply does not
+      appear. Order is the order riders think in: airports first, then the
+      terminals, then plain landmarks.
+    */
+    locKinds() {
+      const order = ['airport', 'rail', 'bus', 'cruise', 'place'];
+      const labels = { airport: 'Airports', rail: 'Rail', bus: 'Bus', cruise: 'Cruise', place: 'Places' };
+      const counts = {};
+      (this.locs || []).forEach(l => { counts[l.t] = (counts[l.t] || 0) + 1; });
+      return order
+        .filter(k => counts[k])
+        .map(k => ({ v: k, l: labels[k] || k, n: counts[k] }));
+    },
+    toggleLocType(k) {
+      const i = (this.locTypes || []).indexOf(k);
+      if (i === -1) this.locTypes = [...(this.locTypes || []), k];
+      else this.locTypes = this.locTypes.filter(t => t !== k);
+    },
+    locTypeOn(k) { return (this.locTypes || []).includes(k); },
     filteredLocs() {
       const q = (this.locQuery || '').toLowerCase().trim();
-      return this.locs.filter(l => (!this.locType || l.t === this.locType) && (!q || (l.v + ' ' + l.a).toLowerCase().includes(q)));
+      const types = this.locTypes || [];
+      /*
+        A typed search always wins over the type chips.
+
+        The chips are a way to narrow what you are *browsing*. They are not a
+        hard gate: with a chip on, searching "Kennedy" used to return nothing at
+        all - even though JFK is the first row of the list - and the rider was
+        pushed to type the airport as a free-text address instead of picking
+        the saved location. A filter that hides a literal match for what
+        someone just typed is always wrong.
+      */
+      return this.locs.filter(l => {
+        if (q) return (l.v + ' ' + l.a).toLowerCase().includes(q);
+        if (!types.length) return true;
+        return types.includes(l.t);
+      });
     },
     pickLoc(v) {
       if (this.sameAsOther(v)) {

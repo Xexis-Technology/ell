@@ -2,6 +2,9 @@
 declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 $pdo = Database::pdo();
+$pc = page_content($pdo, 'home');
+$pu = static fn(string $k): string => url(PageContent::safe_link($pc[$k] ?? '', 'services/booking.php'));
+$pimg = static fn(string $k): string => media_url($pc[$k] ?? '');
 $vehicles = [];
 $minMile = null;
 $minHourly = null;
@@ -93,8 +96,8 @@ ob_start();
     <!-- Hero grid -->
     <div id="heroBooking" class="grid lg:grid-cols-2 gap-8 xl:gap-14 items-stretch pt-6 md:pt-10 pb-12 md:pb-16" x-data="tripSlip()">
       <div class="flex flex-col justify-center">
-        <h1 class="text-4xl md:text-5xl font-semibold text-[#F9F9F9] mt-4">Premium car service. <span class="text-[#F3D4A6] italic font-display">Booked in minutes.</span></h1>
-        <p class="mt-3 text-[#E5E5E3] max-w-md text-sm md:text-base">Fixed pricing. Professional chauffeurs.</p>
+        <h1 class="text-4xl md:text-5xl font-semibold text-[#F9F9F9] mt-4"><?= e($pc['hero_title']) ?> <span class="text-[#F3D4A6] italic font-display"><?= e($pc['hero_title_accent']) ?></span></h1>
+        <p class="mt-3 text-[#E5E5E3] max-w-md text-sm md:text-base"><?= e($pc['hero_sub']) ?></p>
 
         <!-- Booking card -->
         <div class="bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 md:p-6 mt-8">
@@ -218,7 +221,7 @@ ob_start();
               <span class="w-6 h-6 rounded-full bg-[#0A0A0C] text-[#D9B978] inline-flex items-center justify-center" aria-hidden="true">↗</span>
             </button>
           </form>
-          <p class="text-xs text-[#AB8868] text-center mt-3">Booking for your company? <a class="underline text-[#F3D4A6]" href="<?= url('services/group-event.php') ?>">Request a group quote</a></p>
+          <p class="text-xs text-[#AB8868] text-center mt-3">Booking for your company? <a class="underline text-[#F3D4A6]" href="<?= url('services/group-event.php') ?>"><?= e($pc['journey_4_cta']) ?></a></p>
         </div>
 
         <!-- Location picker popup -->
@@ -230,9 +233,16 @@ ob_start();
               <button type="button" @click="locOpen = false" aria-label="Close" class="text-[#AB8868] hover:text-white text-xl px-2">✕</button>
             </div>
             <input x-ref="locSearch" x-model="locQuery" @keydown.enter.prevent="useSearchAsCustom()" placeholder="Search or enter any address…" aria-label="Search locations or enter an address" class="input rounded-xl mt-3">
-            <div class="flex gap-2 mt-3" role="group" aria-label="Location type">
-              <button type="button" @click="locType = locType === 'road' ? '' : 'road'" :class="locType === 'road' ? 'bg-[#D9B978] text-[#0A0A0C]' : 'border border-[#3a3a3d] text-[#F5F5F3]'" class="text-xs font-semibold px-4 py-2 rounded-full">Road</button>
-              <button type="button" @click="locType = locType === 'airport' ? '' : 'airport'" :class="locType === 'airport' ? 'bg-[#D9B978] text-[#0A0A0C]' : 'border border-[#3a3a3d] text-[#F5F5F3]'" class="text-xs font-semibold px-4 py-2 rounded-full">Airport</button>
+            <div class="flex gap-2 mt-3 loc-types" role="group" aria-label="Location type"
+       :class="locQuery.trim() !== '' ? 'is-idle' : ''"
+       :title="locQuery.trim() !== '' ? 'Not filtering while you search - every match is shown' : 'Narrow the list you are browsing'">
+  <template x-for="k in locKinds()" :key="k.v">
+    <button type="button" @click="toggleLocType(k.v)" :aria-pressed="locTypeOn(k.v)"
+      :class="locTypeOn(k.v) ? 'bg-[#D9B978] text-[#0A0A0C] border border-[#D9B978]' : 'border border-[#3a3a3d] text-[#F5F5F3]'"
+      class="text-xs font-semibold px-4 py-2 rounded-full">
+      <span x-text="k.l"></span><span class="tabular opacity-60 ml-1" x-text="k.n"></span>
+    </button>
+  </template>
             </div>
             <button type="button" x-show="locQuery.trim() !== ''" @click="useSearchAsCustom()" class="w-full mt-2 border border-dashed border-[#C8A96B] rounded-xl py-2.5 text-xs text-[#F3D4A6]">Use “<span x-text="locQuery.trim()"></span>” as address</button>
             <p x-show="routeErr" class="text-xs text-[#f3c1bd] px-1 mt-2" x-text="routeErr" role="alert"></p>
@@ -317,6 +327,19 @@ ob_start();
   </div>
 </section>
 
+<?php /* The location list, as data rather than as a literal array in the JS.
+         tripSlip() reads window.__locations, which is set from this payload on
+         the line below; see locations_json() for why the HEX flags are not
+         optional. It has to come before the script that builds the component,
+         because the object literal is evaluated the moment that script runs. */ ?>
+<script type="application/json" id="locData"><?= locations_json($pdo) ?></script>
+<script>
+window.__locations = (function () {
+  var el = document.getElementById('locData');
+  if (!el) return [];
+  try { var d = JSON.parse(el.textContent); return Array.isArray(d) ? d : []; } catch (e) { return []; }
+})();
+</script>
 <script>
 function tripSlip() {
   return {
@@ -450,32 +473,13 @@ function tripSlip() {
     locFor: 'pickup',
     stopIdx: null,
     locQuery: '',
-    locType: '',
-    locs: [
-      {v: 'John F. Kennedy International Airport (JFK)', a: 'Queens · Airport', t: 'airport'},
-      {v: 'LaGuardia Airport (LGA)', a: 'Queens · Airport', t: 'airport'},
-      {v: 'Newark Liberty International Airport (EWR)', a: 'New Jersey · Airport', t: 'airport'},
-      {v: 'Moynihan Train Hall, Penn Station', a: 'Manhattan · Rail', t: 'road'},
-      {v: 'Grand Central Terminal', a: 'Manhattan · Rail', t: 'road'},
-      {v: 'Port Authority Bus Terminal', a: 'Manhattan · Bus', t: 'road'},
-      {v: 'Manhattan Cruise Terminal', a: 'Manhattan · Cruise', t: 'road'},
-      {v: 'Brooklyn Cruise Terminal', a: 'Brooklyn · Cruise', t: 'road'},
-      {v: 'Wall Street Piers', a: 'Manhattan · Cruise', t: 'road'},
-      {v: 'Times Square', a: 'Manhattan', t: 'road'},
-      {v: 'Central Park South', a: 'Manhattan', t: 'road'},
-      {v: 'World Trade Center', a: 'Manhattan', t: 'road'},
-      {v: 'Empire State Building', a: 'Manhattan', t: 'road'},
-      {v: 'Madison Square Garden', a: 'Manhattan', t: 'road'},
-      {v: 'Barclays Center', a: 'Brooklyn', t: 'road'},
-      {v: 'Yankee Stadium', a: 'Bronx', t: 'road'},
-      {v: 'Citi Field', a: 'Queens', t: 'road'},
-      {v: 'MetLife Stadium', a: 'New Jersey', t: 'road'}
-    ],
+    locTypes: [],
+    locs: window.__locations || [],
     openLoc(which, i = null) {
       this.locFor = which;
       this.stopIdx = i;
       this.locQuery = '';
-      this.locType = '';
+      this.locTypes = [];
       this.routeErr = '';
       this.locOpen = true;
       this.$nextTick(() => { if (this.$refs.locSearch) this.$refs.locSearch.focus(); });
@@ -505,9 +509,42 @@ function tripSlip() {
       this.setLocValue(v);
       this.locOpen = false;
     },
+    /*
+      The type chips, built from the data rather than hardcoded in the markup.
+      See assets/js/booking.js, which is the same component: the picker used to
+      offer only Road and Airport while the office manages five kinds in
+      Settings, so rail, bus, cruise and place had no filter at all. These are
+      derived from `locs`, so a category with no locations gets no chip.
+    */
+    locKinds() {
+      const order = ['airport', 'rail', 'bus', 'cruise', 'place'];
+      const labels = { airport: 'Airports', rail: 'Rail', bus: 'Bus', cruise: 'Cruise', place: 'Places' };
+      const counts = {};
+      (this.locs || []).forEach(l => { counts[l.t] = (counts[l.t] || 0) + 1; });
+      return order
+        .filter(k => counts[k])
+        .map(k => ({ v: k, l: labels[k] || k, n: counts[k] }));
+    },
+    toggleLocType(k) {
+      const i = (this.locTypes || []).indexOf(k);
+      if (i === -1) this.locTypes = [...(this.locTypes || []), k];
+      else this.locTypes = this.locTypes.filter(t => t !== k);
+    },
+    locTypeOn(k) { return (this.locTypes || []).includes(k); },
     filteredLocs() {
       const q = (this.locQuery || '').toLowerCase().trim();
-      return this.locs.filter(l => (!this.locType || l.t === this.locType) && (!q || (l.v + ' ' + l.a).toLowerCase().includes(q)));
+      const types = this.locTypes || [];
+      /*
+        A typed search always wins over the type chips - see the note in
+        assets/js/booking.js. With a chip on, searching "Kennedy" used to
+        return nothing even though JFK was the first row, and the rider ended
+        up typing the airport as free text instead of picking the location.
+      */
+      return this.locs.filter(l => {
+        if (q) return (l.v + ' ' + l.a).toLowerCase().includes(q);
+        if (!types.length) return true;
+        return types.includes(l.t);
+      });
     },
     pickLoc(v) {
       if (this.sameAsOther(v)) {
@@ -536,8 +573,8 @@ function tripSlip() {
 <!-- SIGNATURE JOURNEYS: interactive showcase -->
 <section class="mt-10 md:mt-14 pb-10 md:pb-14" x-data="{j:'p2p'}">
   <div class="max-w-7xl mx-auto px-4">
-    <p class="eyebrow">Start with a route</p>
-    <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2">Signature journeys</h2>
+    <p class="eyebrow"><?= e($pc['journeys_eyebrow']) ?></p>
+    <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2"><?= e($pc['journeys_title']) ?></h2>
     <div class="grid lg:grid-cols-[1fr_1.2fr] gap-6 lg:gap-10 mt-6 items-stretch">
       <!-- Service selector -->
       <div class="flex lg:flex-col gap-2 overflow-x-auto no-scrollbar" role="tablist" aria-label="Journeys">
@@ -545,74 +582,74 @@ function tripSlip() {
           :class="j === 'p2p' ? 'border-[#C8A96B] bg-[#181819]' : 'border-[#2a2a2b] hover:border-[#3a3a3d]'"
           class="shrink-0 lg:shrink text-left border rounded-2xl p-4 md:p-5 min-w-[220px] lg:min-w-0">
           <span class="tabular block text-xs tracking-[0.2em] text-[#D9B978]">ELL·101</span>
-          <span class="font-display block text-xl text-[#F9F9F9] mt-1">Point-to-Point</span>
-          <span class="block text-xs text-[#AB8868] mt-1">Pickup → stops → destination</span>
+          <span class="font-display block text-xl text-[#F9F9F9] mt-1"><?= e($pc['journey_1_label']) ?></span>
+          <span class="block text-xs text-[#AB8868] mt-1"><?= e($pc['journey_1_desc']) ?></span>
         </button>
         <button type="button" role="tab" :aria-selected="j === 'airport'" @click="j = 'airport'"
           :class="j === 'airport' ? 'border-[#C8A96B] bg-[#181819]' : 'border-[#2a2a2b] hover:border-[#3a3a3d]'"
           class="shrink-0 lg:shrink text-left border rounded-2xl p-4 md:p-5 min-w-[220px] lg:min-w-0">
           <span class="tabular block text-xs tracking-[0.2em] text-[#D9B978]">ELL·102</span>
-          <span class="font-display block text-xl text-[#F9F9F9] mt-1">Airport transfer</span>
-          <span class="block text-xs text-[#AB8868] mt-1">Terminal to door, door to terminal</span>
+          <span class="font-display block text-xl text-[#F9F9F9] mt-1"><?= e($pc['journey_2_label']) ?></span>
+          <span class="block text-xs text-[#AB8868] mt-1"><?= e($pc['journey_2_desc']) ?></span>
         </button>
         <button type="button" role="tab" :aria-selected="j === 'hourly'" @click="j = 'hourly'"
           :class="j === 'hourly' ? 'border-[#C8A96B] bg-[#181819]' : 'border-[#2a2a2b] hover:border-[#3a3a3d]'"
           class="shrink-0 lg:shrink text-left border rounded-2xl p-4 md:p-5 min-w-[220px] lg:min-w-0">
           <span class="tabular block text-xs tracking-[0.2em] text-[#D9B978]">ELL·103</span>
-          <span class="font-display block text-xl text-[#F9F9F9] mt-1">Evening on standby</span>
-          <span class="block text-xs text-[#AB8868] mt-1">Hourly charter, 2-hour minimum</span>
+          <span class="font-display block text-xl text-[#F9F9F9] mt-1"><?= e($pc['journey_3_label']) ?></span>
+          <span class="block text-xs text-[#AB8868] mt-1"><?= e($pc['journey_3_desc']) ?></span>
         </button>
         <button type="button" role="tab" :aria-selected="j === 'groups'" @click="j = 'groups'"
           :class="j === 'groups' ? 'border-[#C8A96B] bg-[#181819]' : 'border-[#3a3a3d] text-[#F5F5F3]'"
           class="shrink-0 lg:shrink text-left border rounded-2xl p-4 md:p-5 min-w-[220px] lg:min-w-0">
           <span class="tabular block text-xs tracking-[0.2em] text-[#D9B978]">ELL·104</span>
-          <span class="font-display block text-xl text-[#F9F9F9] mt-1">Groups &amp; events</span>
-          <span class="block text-xs text-[#AB8868] mt-1">Multi-vehicle, quoted by our team</span>
+          <span class="font-display block text-xl text-[#F9F9F9] mt-1"><?= e($pc['journey_4_label']) ?></span>
+          <span class="block text-xs text-[#AB8868] mt-1"><?= e($pc['journey_4_desc']) ?></span>
         </button>
       </div>
       <!-- Feature panel -->
       <div class="relative rounded-2xl overflow-hidden bg-[#181819] border border-[#2a2a2b] min-h-[380px] lg:min-h-[480px]">
         <template x-if="j === 'p2p'">
           <div>
-            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=60" alt="Luxury car on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+            <img src="<?= e($pimg('journey_1_image')) ?>" alt="<?= e($pc['journey_1_image_alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <h3 class="font-display text-2xl md:text-3xl text-white">Across town, your way</h3>
-              <p class="text-sm text-[#E5E5E3] mt-2">Up to 6 stops · one-way or round-trip<?php if ($minMile !== null): ?> · from $<?= money($minMile) ?>/mi<?php endif; ?></p>
-              <a href="<?= url('services/booking.php?service=point_to_point') ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5">Book point-to-point</a>
+              <h3 class="font-display text-2xl md:text-3xl text-white"><?= e($pc['journey_1_title']) ?></h3>
+              <p class="text-sm text-[#E5E5E3] mt-2"><?= e($pc['journey_1_body']) ?><?php if ($minMile !== null): ?> · from $<?= money($minMile) ?>/mi<?php endif; ?></p>
+              <a href="<?= e($pu('journey_1_cta_url')) ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5"><?= e($pc['journey_1_cta']) ?></a>
             </div>
           </div>
         </template>
         <template x-if="j === 'airport'">
           <div>
-            <img src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1200&q=60" alt="Airplane wing at sunset" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+            <img src="<?= e($pimg('journey_2_image')) ?>" alt="<?= e($pc['journey_2_image_alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <h3 class="font-display text-2xl md:text-3xl text-white">Never wait for a ride again</h3>
-              <p class="text-sm text-[#E5E5E3] mt-2">60 min waiting included · meet &amp; greet available<?php if ($minMile !== null): ?> · from $<?= money($minMile) ?>/mi<?php endif; ?></p>
-              <a href="<?= url('services/booking.php?service=airport') ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5">Book airport transfer</a>
+              <h3 class="font-display text-2xl md:text-3xl text-white"><?= e($pc['journey_2_title']) ?></h3>
+              <p class="text-sm text-[#E5E5E3] mt-2"><?= e($pc['journey_2_body']) ?><?php if ($minMile !== null): ?> · from $<?= money($minMile) ?>/mi<?php endif; ?></p>
+              <a href="<?= e($pu('journey_2_cta_url')) ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5"><?= e($pc['journey_2_cta']) ?></a>
             </div>
           </div>
         </template>
         <template x-if="j === 'hourly'">
           <div>
-            <img src="https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=1200&q=60" alt="City streets at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+            <img src="<?= e($pimg('journey_3_image')) ?>" alt="<?= e($pc['journey_3_image_alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <h3 class="font-display text-2xl md:text-3xl text-white">The night is yours</h3>
-              <p class="text-sm text-[#E5E5E3] mt-2">2-hour minimum · chauffeur on call<?php if ($minHourly !== null): ?> · from $<?= money($minHourly) ?>/hr<?php endif; ?></p>
-              <a href="<?= url('services/booking.php?service=hourly') ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5">Book hourly charter</a>
+              <h3 class="font-display text-2xl md:text-3xl text-white"><?= e($pc['journey_3_title']) ?></h3>
+              <p class="text-sm text-[#E5E5E3] mt-2"><?= e($pc['journey_3_body']) ?><?php if ($minHourly !== null): ?> · from $<?= money($minHourly) ?>/hr<?php endif; ?></p>
+              <a href="<?= e($pu('journey_3_cta_url')) ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5"><?= e($pc['journey_3_cta']) ?></a>
             </div>
           </div>
         </template>
         <template x-if="j === 'groups'">
           <div>
-            <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=60" alt="Chauffeur driving at night" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+            <img src="<?= e($pimg('journey_4_image')) ?>" alt="<?= e($pc['journey_4_image_alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
             <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/40 to-transparent"></div>
             <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <h3 class="font-display text-2xl md:text-3xl text-white">Bring everyone</h3>
-              <p class="text-sm text-[#E5E5E3] mt-2">Weddings · corporate · occasions · free quote</p>
-              <a href="<?= url('services/group-event.php') ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5">Request a group quote</a>
+              <h3 class="font-display text-2xl md:text-3xl text-white"><?= e($pc['journey_4_title']) ?></h3>
+              <p class="text-sm text-[#E5E5E3] mt-2"><?= e($pc['journey_4_body']) ?></p>
+              <a href="<?= e($pu('journey_4_cta_url')) ?>" class="btn-gold rounded-full inline-block mt-4 text-sm px-6 py-2.5"><?= e($pc['journey_4_cta']) ?></a>
             </div>
           </div>
         </template>
@@ -623,14 +660,14 @@ function tripSlip() {
 
 <!-- HOW IT WORKS: centered header, photo + floating cards, icon steps -->
 <section class="max-w-7xl mx-auto px-4 py-10 md:py-14 hairline-t">
-  <p class="eyebrow text-center">How booking works</p>
-  <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2 text-center">Four steps, no surprises</h2>
-  <p class="text-sm text-[#AB8868] mt-2 text-center">No confusion or delays. Just fixed pricing and reliable chauffeurs.</p>
+  <p class="eyebrow text-center"><?= e($pc['steps_eyebrow']) ?></p>
+  <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2 text-center"><?= e($pc['steps_title']) ?></h2>
+  <p class="text-sm text-[#AB8868] mt-2 text-center"><?= e($pc['steps_sub']) ?></p>
   <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 mt-10 items-center">
     <!-- Photo with floating cards -->
     <div class="relative">
       <div class="rounded-2xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868]">
-        <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1000&q=60" alt="Black luxury sedan at night" class="w-full h-[320px] md:h-[420px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+        <img src="<?= e($pimg('steps_image')) ?>" alt="<?= e($pc['steps_image_alt']) ?>" class="w-full h-[320px] md:h-[420px] object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
       </div>
       <span class="absolute top-6 -right-2 sm:right-6 bg-[#D9B978] text-[#0A0A0C] text-xs font-semibold px-4 py-2 rounded-full">Fixed pricing</span>
       <div class="absolute -bottom-6 left-4 right-4 sm:left-8 sm:right-auto sm:w-72 bg-[#181819] border border-[#2a2a2b] rounded-2xl p-4 shadow-2xl">
@@ -646,36 +683,36 @@ function tripSlip() {
         <span class="relative z-10 w-[52px] h-[52px] shrink-0 rounded-2xl bg-[#D9B978] text-[#0A0A0C] inline-flex items-center justify-center" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 1 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
         </span>
-        <span><span class="font-display block text-xl text-[#F9F9F9]">Tell us the route</span>
-        <span class="block text-sm text-[#AB8868] mt-1">Pickup, stops, date and vehicle. It takes about a minute.</span></span>
+        <span><span class="font-display block text-xl text-[#F9F9F9]"><?= e($pc['step_1_title']) ?></span>
+        <span class="block text-sm text-[#AB8868] mt-1"><?= e($pc['step_1_body']) ?></span></span>
       </li>
       <li class="relative flex gap-4">
         <span aria-hidden="true" class="absolute left-[26px] top-[52px] -bottom-8 w-px bg-[#2a2a2b]"></span>
         <span class="relative z-10 w-[52px] h-[52px] shrink-0 rounded-2xl border border-[#3a3a3d] bg-[#0A0A0C] text-[#F3D4A6] inline-flex items-center justify-center" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
         </span>
-        <span><span class="font-display block text-xl text-[#F9F9F9]">Lock the price</span>
-        <span class="block text-sm text-[#AB8868] mt-1">We calculate on our servers and freeze the total before you pay.</span></span>
+        <span><span class="font-display block text-xl text-[#F9F9F9]"><?= e($pc['step_2_title']) ?></span>
+        <span class="block text-sm text-[#AB8868] mt-1"><?= e($pc['step_2_body']) ?></span></span>
       </li>
       <li class="relative flex gap-4">
         <span aria-hidden="true" class="absolute left-[26px] top-[52px] -bottom-8 w-px bg-[#2a2a2b]"></span>
         <span class="relative z-10 w-[52px] h-[52px] shrink-0 rounded-2xl border border-[#3a3a3d] bg-[#0A0A0C] text-[#F3D4A6] inline-flex items-center justify-center" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         </span>
-        <span><span class="font-display block text-xl text-[#F9F9F9]">Pay securely</span>
-        <span class="block text-sm text-[#AB8868] mt-1">Card through Stripe or a secure link. You always get an invoice.</span></span>
+        <span><span class="font-display block text-xl text-[#F9F9F9]"><?= e($pc['step_3_title']) ?></span>
+        <span class="block text-sm text-[#AB8868] mt-1"><?= e($pc['step_3_body']) ?></span></span>
       </li>
       <li class="relative flex gap-4">
         <span class="relative z-10 w-[52px] h-[52px] shrink-0 rounded-2xl border border-[#3a3a3d] bg-[#0A0A0C] text-[#F3D4A6] inline-flex items-center justify-center" aria-hidden="true">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>
         </span>
-        <span><span class="font-display block text-xl text-[#F9F9F9]">Meet your chauffeur</span>
-        <span class="block text-sm text-[#AB8868] mt-1">Dispatched and confirmed by email. We wait — that is the job.</span></span>
+        <span><span class="font-display block text-xl text-[#F9F9F9]"><?= e($pc['step_4_title']) ?></span>
+        <span class="block text-sm text-[#AB8868] mt-1"><?= e($pc['step_4_body']) ?></span></span>
       </li>
     </ol>
   </div>
   <div class="text-center mt-10">
-    <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full inline-block text-sm px-8 py-3">Start step 01</a>
+    <a href="<?= url('services/booking.php') ?>" class="btn-gold rounded-full inline-block text-sm px-8 py-3"><?= e($pc['steps_cta']) ?></a>
   </div>
 </section>
 
@@ -683,10 +720,10 @@ function tripSlip() {
 <section id="fleet" class="max-w-7xl mx-auto px-4 py-10 md:py-14 hairline-t">
   <div class="flex items-end justify-between gap-4">
     <div>
-      <p class="eyebrow">The roster</p>
-      <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2">The fleet</h2>
+      <p class="eyebrow"><?= e($pc['fleet_eyebrow']) ?></p>
+      <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2"><?= e($pc['fleet_title']) ?></h2>
     </div>
-    <a href="<?= url('services/booking.php') ?>" class="text-sm underline hidden sm:inline text-[#E5E5E3] shrink-0">Book your ride</a>
+    <a href="<?= url('services/booking.php') ?>" class="text-sm underline hidden sm:inline text-[#E5E5E3] shrink-0"><?= e($pc['fleet_cta']) ?></a>
   </div>
   <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
     <?php foreach ($vehicles as $v):
@@ -718,33 +755,33 @@ function tripSlip() {
 
 <!-- TRUST + FAQ -->
 <section class="max-w-7xl mx-auto px-4 pb-12 hairline-t pt-10">
-  <p class="eyebrow">Good to know</p>
-  <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2">Why riders choose Exotic Lane</h2>
+  <p class="eyebrow"><?= e($pc['trust_eyebrow']) ?></p>
+  <h2 class="font-display text-3xl md:text-4xl text-[#F9F9F9] mt-2"><?= e($pc['trust_title']) ?></h2>
   <div class="grid md:grid-cols-2 gap-8 mt-6">
     <ul class="grid sm:grid-cols-2 gap-4">
       <li class="card rounded-2xl p-5">
         <span class="w-10 h-10 rounded-full bg-[#D9B978] text-[#0A0A0C] inline-flex items-center justify-center font-bold" aria-hidden="true">✓</span>
-        <p class="font-display text-lg text-[#F9F9F9] mt-3">Professional chauffeurs</p>
-        <p class="text-xs text-[#AB8868] mt-1">Flight-friendly airport pickups, every time.</p>
+        <p class="font-display text-lg text-[#F9F9F9] mt-3"><?= e($pc['trust_1_title']) ?></p>
+        <p class="text-xs text-[#AB8868] mt-1"><?= e($pc['trust_1_body']) ?></p>
       </li>
       <li class="card rounded-2xl p-5">
         <span class="w-10 h-10 rounded-full bg-[#D9B978] text-[#0A0A0C] inline-flex items-center justify-center font-bold" aria-hidden="true">$</span>
-        <p class="font-display text-lg text-[#F9F9F9] mt-3">Locked pricing</p>
-        <p class="text-xs text-[#AB8868] mt-1">Server-side totals, frozen before you pay.</p>
+        <p class="font-display text-lg text-[#F9F9F9] mt-3"><?= e($pc['trust_2_title']) ?></p>
+        <p class="text-xs text-[#AB8868] mt-1"><?= e($pc['trust_2_body']) ?></p>
       </li>
       <li class="card rounded-2xl p-5">
         <span class="w-10 h-10 rounded-full bg-[#D9B978] text-[#0A0A0C] inline-flex items-center justify-center font-bold" aria-hidden="true">◈</span>
-        <p class="font-display text-lg text-[#F9F9F9] mt-3">Secure payment</p>
-        <p class="text-xs text-[#AB8868] mt-1">Stripe checkout with invoice on every ride.</p>
+        <p class="font-display text-lg text-[#F9F9F9] mt-3"><?= e($pc['trust_3_title']) ?></p>
+        <p class="text-xs text-[#AB8868] mt-1"><?= e($pc['trust_3_body']) ?></p>
       </li>
       <li class="card rounded-2xl p-5">
         <span class="w-10 h-10 rounded-full bg-[#D9B978] text-[#0A0A0C] inline-flex items-center justify-center font-bold" aria-hidden="true">◷</span>
-        <p class="font-display text-lg text-[#F9F9F9] mt-3">Waiting included</p>
-        <p class="text-xs text-[#AB8868] mt-1">Free allowances for airports and terminals.</p>
+        <p class="font-display text-lg text-[#F9F9F9] mt-3"><?= e($pc['trust_4_title']) ?></p>
+        <p class="text-xs text-[#AB8868] mt-1"><?= e($pc['trust_4_body']) ?></p>
       </li>
     </ul>
     <div class="card rounded-2xl p-5 md:p-6">
-      <h3 class="font-display text-xl text-[#F3D4A6]">Questions, answered</h3>
+      <h3 class="font-display text-xl text-[#F3D4A6]"><?= e($pc['faq_title']) ?></h3>
       <details class="hairline-b py-3 group">
         <summary class="flex items-center justify-between gap-3 text-sm text-[#F9F9F9] font-semibold cursor-pointer [&::-webkit-details-marker]:hidden">How many stops can I add?<span class="text-[#C8A96B] group-open:rotate-45 transition-transform" aria-hidden="true">＋</span></summary>
         <p class="text-sm text-[#AB8868] mt-2">Up to 6 additional stops on point-to-point rides.</p>
@@ -761,12 +798,13 @@ function tripSlip() {
         <summary class="flex items-center justify-between gap-3 text-sm text-[#F9F9F9] font-semibold cursor-pointer [&::-webkit-details-marker]:hidden">Can I change my pickup time?<span class="text-[#C8A96B] group-open:rotate-45 transition-transform" aria-hidden="true">＋</span></summary>
         <p class="text-sm text-[#AB8868] mt-2">Yes — until 2 hours before pickup, from your account.</p>
       </details>
-      <p class="text-sm mt-2"><a class="underline" href="<?= url('legal/faq.php') ?>">Read all FAQs</a> · <a class="underline" href="<?= url('legal/contact.php') ?>">Contact us</a></p>
+      <p class="text-sm mt-2"><a class="underline" href="<?= url('legal/faq.php') ?>"><?= e($pc['faq_more']) ?></a> · <a class="underline" href="<?= url('legal/contact.php') ?>"><?= e($pc['faq_contact']) ?></a></p>
     </div>
   </div>
 </section>
 <?php
 $content = ob_get_clean();
+$seo = page_seo($pdo, 'home');
 $pageTitle = null;
 $metaDesc = 'Exotic Lane Limo — luxury chauffeur, airport and hourly service. Search, book and pay online.';
 $hideHeader = true;

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
 $pdo = Database::pdo();
+$pc = page_content($pdo, 'direct_contract');
+$pimg = static fn(string $k): string => media_url($pc[$k] ?? '');
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
@@ -26,18 +28,18 @@ ob_start();
     <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1000&q=60" alt="Luxury sedan" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C]/90 via-[#0A0A0C]/25 to-transparent"></div>
     <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-      <p class="tabular text-[10px] tracking-widest text-[#D9B978]">HOW CONTRACTS WORK</p>
+      <p class="tabular text-[10px] tracking-widest text-[#D9B978]"><?= e($pc['panel_eyebrow']) ?></p>
       <ol class="mt-2 space-y-1.5 text-sm text-[#F5F5F3]">
-        <li><strong>1.</strong> Describe the recurring need and routes.</li>
-        <li><strong>2.</strong> We propose vehicles, terms and direct billing.</li>
-        <li><strong>3.</strong> Ride on account, invoiced together.</li>
+        <li><strong>1.</strong> <?= e($pc['panel_step_1']) ?></li>
+        <li><strong>2.</strong> <?= e($pc['panel_step_2']) ?></li>
+        <li><strong>3.</strong> <?= e($pc['panel_step_3']) ?></li>
       </ol>
     </div>
   </div>
   <!-- Form -->
   <div>
     <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9]">Direct contract.</h1>
-    <p class="text-sm text-[#AB8868] mt-2">Corporate accounts and recurring service — one agreement, invoiced together.</p>
+    <p class="text-sm text-[#AB8868] mt-2"><?= e($pc['intro_body']) ?></p>
     <?php if ($message): ?><div class="alert alert-ok mt-4"><?= e($message) ?></div><?php endif; ?>
     <form method="post" class="card rounded-2xl p-5 md:p-6 mt-6 space-y-3"><?= csrf_field() ?>
       <div><label class="label" for="event_type">Contract / service type</label><input id="event_type" name="event_type" class="input" required placeholder="Weekly executive shuttle…"></div>
@@ -54,7 +56,7 @@ ob_start();
         <div><label class="label" for="contact_phone">Contact phone</label><input id="contact_phone" name="contact_phone" class="input" placeholder="+1 555 010 2030"></div>
       </div>
       <div><label class="label" for="contact_email">Contact email</label><input id="contact_email" type="email" name="contact_email" class="input" required placeholder="you@example.com"></div>
-      <button class="btn-gold rounded-full w-full py-3.5 text-sm font-semibold">Request contract quote</button>
+      <button class="btn-gold rounded-full w-full py-3.5 text-sm font-semibold"><?= e($pc['form_cta']) ?></button>
     </form>
   </div>
 </div>

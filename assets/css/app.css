@@ -29,6 +29,93 @@ table.data td{padding:.65rem;border-bottom:1px solid #262628}
 .alert{padding:.7rem 1rem;margin-bottom:1rem;border:1px solid;border-radius:12px}
 .alert-ok{background:#0f2417;border-color:#2c6b3f;color:#b9e6c7}
 .alert-err{background:#2a1210;border-color:var(--err);color:#f3c1bd}
+
+/* ---- alerts as toasts (see assets/js/alerts.js) -------------------------
+   --toast-top lets a layout with a sticky header push the stack clear of it;
+   driver.css sets it, because .drv-top is position:sticky at the very top and
+   a toast sitting on the trip bar would hide the thing the driver opened the
+   app for.
+
+   width:min(24rem, 100vw - 1.5rem) is the responsive rule that matters. On a
+   390px phone 24rem overflows, so the min() picks the viewport instead and the
+   toast spans the width with an even 12px gutter either side. On a desktop it
+   settles at 24rem so four of them do not become a wall.
+
+   max-height + overflow is for landscape phones and short windows: the stack
+   scrolls rather than growing off the bottom of the screen. overscroll-behavior
+   stops that scroll from chaining back into the page behind it.
+
+   pointer-events:none on the stack with auto on the toasts is the part that is
+   easy to leave out and impossible to un-notice: without it, an invisible
+   full-height strip of page sits in the top-right corner swallowing every
+   click aimed at whatever is there. */
+.toast-stack{
+  --toast-top: max(.75rem, env(safe-area-inset-top));
+  --toast-gap: .5rem;
+  position:fixed;
+  top:var(--toast-top);
+  right:max(.75rem, env(safe-area-inset-right));
+  z-index:70;                      /* above .pk-pop(60), z-[60] and z-50 */
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:var(--toast-gap);
+  width:min(24rem, calc(100vw - 1.5rem));
+  max-height:calc(100dvh - var(--toast-top) - .75rem);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  pointer-events:none;
+  scrollbar-width:thin;
+}
+.toast-stack>*{pointer-events:auto;flex:0 0 auto}
+
+/* ---- the toast itself --------------------------------------------------
+   The margin has to go: in normal flow .alert owns a bottom margin that was
+   doing real vertical rhythm between a message and the form below it. In a
+   flex stack the gap does that job, and leaving the margin on would double it
+   and drift the row off-centre.
+
+   position:relative is for the close button. It is absolutely placed rather
+   than a flex child because .alert is plain block today and three of them wrap
+   text and a link together. */
+.alert.is-toast{
+  position:relative;
+  margin:0;
+  padding-right:2.6rem;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
+  animation:toast-in .22s cubic-bezier(.2,.7,.3,1) both;
+}
+.alert.is-toast.is-going{animation:toast-out .22s ease forwards}
+@keyframes toast-in{from{opacity:0;transform:translate3d(1.25rem,0,0) scale(.98)}to{opacity:1;transform:none}}
+@keyframes toast-out{to{opacity:0;transform:translate3d(1.25rem,0,0) scale(.98)}}
+
+.alert-x{position:absolute;top:.45rem;right:.5rem;width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid currentColor;border-radius:999px;color:inherit;font-family:inherit;font-size:1.05rem;line-height:1;padding:0;cursor:pointer;opacity:.55;transition:opacity .14s,background .14s}
+.alert-x:hover{opacity:1;background:rgba(255,255,255,.08)}
+.alert-x:focus-visible{outline:2px solid currentColor;outline-offset:2px;opacity:1}
+
+@media (max-width:640px){
+  /* Below 640px the gutter stays even but tightens, and the toast goes
+     edge-to-edge enough to read as a banner rather than a card floating over
+     the content. Longer messages get more room, not less. */
+  .toast-stack{
+    --toast-gap:.4rem;
+    right:max(.5rem, env(safe-area-inset-right));
+    left:max(.5rem, env(safe-area-inset-left));
+    width:auto;                     /* both edges pinned: truly fluid */
+  }
+  .alert.is-toast{border-radius:12px;font-size:.92rem;padding:.65rem 2.4rem .65rem .8rem}
+  .alert-x{top:.4rem;right:.45rem}
+}
+/* Landscape phone: the viewport is short, so give the stack the room it can
+   actually use and let it scroll rather than clip. */
+@media (max-height:460px){
+  .toast-stack{max-height:calc(100dvh - var(--toast-top) - .4rem)}
+  .alert.is-toast{animation-duration:.15s}
+}
+@media (prefers-reduced-motion:reduce){
+  .alert.is-toast,.alert.is-toast.is-going{animation:none}
+}
 @media (max-width:768px){.no-overflow{overflow-x:hidden}}
 [x-cloak]{display:none !important}
 .no-scrollbar{scrollbar-width:none;-ms-overflow-style:none}
@@ -87,3 +174,31 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .pk-login-msg.is-bad{color:#f0bdb6;border-color:#5a2f2b;background:#1e1413}
 .pk-login-msg.is-ok{color:#b9e6c7;border-color:#2c4a35;background:#141c16}
 .pk-login-msg.is-busy{color:#f0cd97;border-color:#5a4526;background:#1d1811}
+/* ===========================================================================
+   Location picker: the type chips (index.php and services/booking.php)
+
+   The chips narrow the list you are browsing, but they must never hide a
+   literal match for something you typed - see filteredLocs(). While there is a
+   query they are not filtering anything, so they say so by going quiet rather
+   than sitting there looking selected.
+   ======================================================================== */
+.loc-types{transition:opacity .16s}
+.loc-types.is-idle{opacity:.35}
+.loc-types.is-idle button{cursor:default}
+
+@media(prefers-reduced-motion:reduce){
+  .loc-types{transition:none}
+}
+/* ===========================================================================
+   Credit line in the newsletter block (views/partials/credits.php)
+
+   Text only, sitting between the "One email at a time..." line and the
+   subscribe input. It used to carry the openIntelix logo, but that is a 400x400
+   PNG with a white background and rendered as a large white block on this
+   near-black page.
+   ======================================================================== */
+.pc-credits{margin-top:.9rem}
+.pc-credits-line{font-size:.72rem;color:#8b8b8f}
+.pc-credit-x{color:#F3D4A6;text-decoration:underline;text-underline-offset:3px}
+.pc-credit-x:hover{color:#D9B978}
+.pc-credit-x:focus-visible{outline:2px solid #F3D4A6;outline-offset:2px}

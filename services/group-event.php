@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
 $pdo = Database::pdo();
+$pc = page_content($pdo, 'group_event');
+$pimg = static fn(string $k): string => media_url($pc[$k] ?? '');
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
@@ -35,21 +37,21 @@ ob_start();
 <div class="max-w-7xl mx-auto px-4 py-10 md:py-14 grid lg:grid-cols-2 gap-8 items-stretch">
   <!-- Photo panel -->
   <div class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#181819] to-[#AB8868] min-h-[320px]">
-    <img src="https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?auto=format&fit=crop&w=1000&q=60" alt="Vehicle on the road" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
+    <img src="<?= e($pimg('panel_image')) ?>" alt="<?= e($pc['panel_image_alt']) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0C]/90 via-[#0A0A0C]/25 to-transparent"></div>
     <div class="absolute inset-x-0 bottom-0 p-6 md:p-8">
-      <p class="tabular text-[10px] tracking-widest text-[#D9B978]">HOW GROUP BOOKINGS WORK</p>
+      <p class="tabular text-[10px] tracking-widest text-[#D9B978]"><?= e($pc['panel_eyebrow']) ?></p>
       <ol class="mt-2 space-y-1.5 text-sm text-[#F5F5F3]">
-        <li><strong>1.</strong> Tell us the occasion, headcount and schedule.</li>
-        <li><strong>2.</strong> We respond with vehicles and a quote.</li>
-        <li><strong>3.</strong> Confirm — chauffeurs dispatched for the day.</li>
+        <li><strong>1.</strong> <?= e($pc['panel_step_1']) ?></li>
+        <li><strong>2.</strong> <?= e($pc['panel_step_2']) ?></li>
+        <li><strong>3.</strong> <?= e($pc['panel_step_3']) ?></li>
       </ol>
     </div>
   </div>
   <!-- Form -->
   <div>
-    <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9]">Group &amp; event, handled.</h1>
-    <p class="text-sm text-[#AB8868] mt-2">No matter the headcount or schedule, our team builds the right multi-vehicle plan and quotes it.</p>
+    <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9]"><?= e($pc['intro_title']) ?></h1>
+    <p class="text-sm text-[#AB8868] mt-2"><?= e($pc['intro_body']) ?></p>
     <?php if ($message): ?><div class="alert alert-ok mt-4"><?= e($message) ?></div><?php endif; ?>
     <form method="post" class="card rounded-2xl p-5 md:p-6 mt-6 space-y-3"><?= csrf_field() ?>
       <div><label class="label" for="event_type">Event type</label><input id="event_type" name="event_type" class="input" required placeholder="Wedding, corporate outing…"></div>
@@ -66,7 +68,7 @@ ob_start();
         <div><label class="label" for="contact_phone">Contact phone</label><input id="contact_phone" name="contact_phone" class="input" placeholder="+1 555 010 2030"></div>
       </div>
       <div><label class="label" for="contact_email">Contact email</label><input id="contact_email" type="email" name="contact_email" class="input" required placeholder="you@example.com"></div>
-      <button class="btn-gold rounded-full w-full py-3.5 text-sm font-semibold">Request group quote</button>
+      <button class="btn-gold rounded-full w-full py-3.5 text-sm font-semibold"><?= e($pc['form_cta']) ?></button>
     </form>
   </div>
 </div>
