@@ -678,3 +678,158 @@ function admin_badge(int $n): string
 {
     return $n > 99 ? '99+' : (string)$n;
 }
+
+/* ---------------------------------------------------------------------------
+   Reverse geocoding: coordinates in, a street address out.
+
+   Nominatim, because there is no paid geocoder configured: GOOGLE_MAPS_API_KEY
+   in .env is empty and MAPS_ENABLED is false, so a Google-backed button would
+   have nothing to call. Nominatim needs no key.
+
+   Two obligations come with using the public Nominatim server, and both are
+   handled here rather than left to the caller:
+
+     - It must be sent a User-Agent that identifies the application. Browsers
+       are not allowed to set one, which is the main reason this runs server-side
+       instead of being a fetch() straight from the page.
+     - At most one request per second, from one application. Repeated lookups
+       for roughly the same spot are answered from a local cache instead, which
+       is what keeps an impatient tapper from tripping the limit.
+   --------------------------------------------------------------------------- */
+
+/**
+ * Round coordinates to roughly an 11-metre grid.
+ *
+ * Two people standing either side of the same doorway resolve to the same key,
+ * so the cache answers the second lookup without touching the network at all.
+ */
+function geocode_cache_key(float $lat, float $lng): string
+{
+    return sprintf('%.4f_%.4f', $lat, $lng);
+}
+
+/**
+ * Build the application User-Agent Nominatim asks for.
+ *
+ * OSM wants a way to reach whoever is sending the traffic, so an admin email is
+ * included when one is on file and NOTIFY_EMAIL overrides it.
+ */
+function geocode_user_agent(PDO $pdo): string
+{
+    $contact = trim((string)env('GEOCODER_CONTACT', ''));
+    if ($contact === '') {
+        $org = trim((string)setting($pdo, 'org_email', ''));
+        if ($org !== '') $contact = $org;
+    }
+    $name = trim((string)setting($pdo, 'org_name', 'Exotic Lane Limo'));
+    $ua = $name . ' booking site';
+    return $contact !== '' ? $ua . ' (contact: ' . $contact . ')' : $ua;
+}
+
+/**
+ * Pull one readable line out of a Nominatim address object.
+ *
+ * Nominatim returns around twenty named parts. Which ones exist depends on the
+ * country - there is no city in a rural US township and no district in a Dhaka
+ * thana - so this walks an ordered list of candidates and takes the first
+ * non-empty ones rather than insisting on a fixed shape.
+ */
+function geocode_format_address(array $address, string $fallbackDisplay): string
+{
+    $pick = static function (array $a, array $keys): string {
+        foreach ($keys as $k) {
+            $v = trim((string)($a[$k] ?? ''));
+            if ($v !== '') return $v;
+        }
+        return '';
+    };
+
+    $street = $pick($address, ['road', 'pedestrian', 'footway', 'path', 'residential']);
+    $house  = trim((string)($address['house_number'] ?? ''));
+    $line1  = trim(($house !== '' ? $house . ' ' : '') . $street);
+
+    $city = $pick($address, [
+        'city', 'town', 'village', 'municipality', 'suburb', 'county',
+        'city_district', 'district', 'hamlet',
+    ]);
+    $state = $pick($address, ['state', 'region', 'province']);
+    $post  = $pick($address, ['postcode', 'postal_code']);
+
+    // A house number is worthless without the road and vice versa, so neither
+    // half is emitted alone.
+    $parts = array_values(array_filter([$line1, $city, $state, $post], static fn($s) => $s !== ''));
+    // Keep it to three parts at most; a four-part line wraps badly in a field.
+    if (count($parts) > 3) $parts = array_slice($parts, 0, 3);
+
+    $line = implode(', ', $parts);
+    if ($line === '') $line = trim($fallbackDisplay);
+
+    $country = trim((string)($address['country'] ?? ''));
+    if ($country !== '' && stripos($line, $country) === false && count($parts) < 3) {
+        $line .= ($line !== '' ? ', ' : '') . $country;
+    }
+    return $line;
+}
+
+/**
+ * Coordinates to a one-line address.
+ *
+ * @return array{ok:bool,address?:string,display?:string,cached?:bool,error?:string}
+ */
+function reverse_geocode(PDO $pdo, float $lat, float $lng): array
+{
+    $cacheDir = APP_ROOT . '/storage/cache';
+    $cacheFile = $cacheDir . '/geocode_' . geocode_cache_key($lat, $lng) . '.json';
+
+    if (is_file($cacheFile) && (time() - filemtime($cacheFile) < 2592000)) {
+        $cached = json_decode((string)file_get_contents($cacheFile), true);
+        if (is_array($cached) && !empty($cached['address'])) {
+            return ['ok' => true, 'address' => (string)$cached['address'], 'cached' => true];
+        }
+    }
+
+    $endpoint = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat='
+        . rawurlencode((string)round($lat, 6)) . '&lon=' . rawurlencode((string)round($lng, 6));
+
+    $ch = curl_init($endpoint);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_USERAGENT      => geocode_user_agent($pdo),
+        CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+        CURLOPT_FOLLOWLOCATION => false,
+    ]);
+    $body = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($body === false || $curlErr !== '') {
+        return ['ok' => false, 'error' => 'Could not reach the address lookup.'];
+    }
+    if ($status !== 200) {
+        // 429 is Nominatim's rate limiter. Saying so is more useful than
+        // "something went wrong", because the fix is to wait a second.
+        if ($status === 429) return ['ok' => false, 'error' => 'Too many lookups at once. Try again in a moment.'];
+        return ['ok' => false, 'error' => 'The address lookup failed.'];
+    }
+
+    $data = json_decode((string)$body, true);
+    if (!is_array($data) || !empty($data['error'])) {
+        return ['ok' => false, 'error' => 'No address found for that spot.'];
+    }
+
+    $display = trim((string)($data['display_name'] ?? ''));
+    $parts   = is_array($data['address'] ?? null) ? $data['address'] : [];
+    $line    = geocode_format_address($parts, $display);
+
+    if ($line === '') {
+        return ['ok' => false, 'error' => 'No address found for that spot.'];
+    }
+
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0775, true);
+    @file_put_contents($cacheFile, json_encode(['address' => $line], JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+    return ['ok' => true, 'address' => $line];
+}

@@ -105,6 +105,44 @@ foreach ($vehicles as $v) $carFree[(int)$v['id']] = DispatchService::vehicleAvai
 $crewFree = [];
 foreach ($drivers as $d) $crewFree[(int)$d['id']] = DispatchService::driverAvailable($pdo, (int)$d['id'], $day);
 
+// ---- what the Crew and Cars panels actually show ------------------------
+// The run sheet can be long, and the two side panels are a glance, not an
+// index: 3 cars and 4 crew is what fits without turning the sidebar into a
+// second run sheet. Anything past that goes behind a link to the page that owns
+// the full list.
+//
+// $drivers and $vehicles are left untouched on purpose. They are the source for
+// the assign pickers further down and for DispatchService::assign's validation,
+// so slicing them here would silently shrink the dropdowns and start rejecting
+// assignments to drivers the admin can see on the Drivers page. Slicing happens
+// here, at render time, on a copy.
+//
+// Free-first, because that is the question these panels exist to answer. Taking
+// the first 3 cars alphabetically and finding all three already on a trip tells
+// the dispatcher there is nothing available when the opposite may be true one
+// row lower; the alphabetical order from the query is kept inside each group so
+// the list does not shuffle around as the day fills up.
+$CREW_CAP = 4;
+$CAR_CAP  = 3;
+$crewAll = $drivers;
+usort($crewAll, static function (array $a, array $b) use ($crewFree): int {
+    $fa = !empty($crewFree[(int)$a['id']]) ? 0 : 1;
+    $fb = !empty($crewFree[(int)$b['id']]) ? 0 : 1;
+    return $fa !== $fb ? $fa <=> $fb : strcasecmp((string)$a['name'], (string)$b['name']);
+});
+$crewList = array_slice($crewAll, 0, $CREW_CAP);
+$crewMore = count($drivers) - count($crewList);
+
+$carsAll = $vehicles;
+usort($carsAll, static function (array $a, array $b) use ($carFree): int {
+    $fa = !empty($carFree[(int)$a['id']]) ? 0 : 1;
+    $fb = !empty($carFree[(int)$b['id']]) ? 0 : 1;
+    if ($fa !== $fb) return $fa <=> $fb;
+    return strcasecmp(trim((string)$a['make'] . ' ' . (string)$a['model']), trim((string)$b['make'] . ' ' . (string)$b['model']));
+});
+$carList = array_slice($carsAll, 0, $CAR_CAP);
+$carMore = count($vehicles) - count($carList);
+
 $initials = static function (string $name): string {
     $parts = preg_split('/\s+/', trim($name)) ?: [];
     $out = '';
@@ -408,7 +446,7 @@ document.addEventListener('alpine:init', function () {
       <h2 class="bk-sec-h">Crew <span class="bk-sub"><?= count($drivers) ?> active</span></h2>
       <?php if (!$drivers): ?><p class="bk-empty">No active drivers yet. <a href="<?= url('admin/drivers.php') ?>">Add one</a>.</p><?php endif; ?>
       <ul class="dp-list">
-        <?php foreach ($drivers as $d):
+        <?php foreach ($crewList as $d):
           $free = DispatchService::driverAvailable($pdo, (int)$d['id'], $day);
         ?>
         <li class="dp-listrow">
@@ -417,13 +455,22 @@ document.addEventListener('alpine:init', function () {
         </li>
         <?php endforeach; ?>
       </ul>
+      <?php /* Only when something is actually hidden. A "View all 4 drivers" link
+               on a list that is already showing all four is noise, and it would
+               train people to stop reading the panel foot. */ ?>
+      <?php if ($crewMore > 0): ?>
+      <p class="dp-morefoot">
+        <a class="dash-more" href="<?= url('admin/drivers.php') ?>">View all <?= count($drivers) ?> drivers<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <span class="dp-moreless"><?= $crewMore ?> more not shown</span>
+      </p>
+      <?php endif; ?>
     </section>
 
     <section class="dp-sec">
       <h2 class="bk-sec-h">Cars <span class="bk-sub"><?= count($vehicles) ?> in fleet</span></h2>
       <?php if (!$vehicles): ?><p class="bk-empty">No active vehicles. <a href="<?= url('admin/vehicles.php') ?>">Add one</a>.</p><?php endif; ?>
       <ul class="dp-cars">
-        <?php foreach ($vehicles as $v):
+        <?php foreach ($carList as $v):
           $free = DispatchService::vehicleAvailable($pdo, (int)$v['id'], $day, '00:00');
         ?>
         <li class="dp-car<?= $free ? '' : ' is-taken' ?>">
@@ -434,6 +481,12 @@ document.addEventListener('alpine:init', function () {
         </li>
         <?php endforeach; ?>
       </ul>
+      <?php if ($carMore > 0): ?>
+      <p class="dp-morefoot">
+        <a class="dash-more" href="<?= url('admin/vehicles.php') ?>">View all <?= count($vehicles) ?> cars<i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <span class="dp-moreless"><?= $carMore ?> more not shown</span>
+      </p>
+      <?php endif; ?>
     </section>
 
     <section class="dp-sec">

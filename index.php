@@ -232,18 +232,45 @@ ob_start();
               <h3 class="font-display text-xl text-[#F3D4A6]">Choose location</h3>
               <button type="button" @click="locOpen = false" aria-label="Close" class="text-[#AB8868] hover:text-white text-xl px-2">✕</button>
             </div>
-            <input x-ref="locSearch" x-model="locQuery" @keydown.enter.prevent="useSearchAsCustom()" placeholder="Search or enter any address…" aria-label="Search locations or enter an address" class="input rounded-xl mt-3">
-            <div class="flex gap-2 mt-3 loc-types" role="group" aria-label="Location type"
-       :class="locQuery.trim() !== '' ? 'is-idle' : ''"
-       :title="locQuery.trim() !== '' ? 'Not filtering while you search - every match is shown' : 'Narrow the list you are browsing'">
-  <template x-for="k in locKinds()" :key="k.v">
-    <button type="button" @click="toggleLocType(k.v)" :aria-pressed="locTypeOn(k.v)"
-      :class="locTypeOn(k.v) ? 'bg-[#D9B978] text-[#0A0A0C] border border-[#D9B978]' : 'border border-[#3a3a3d] text-[#F5F5F3]'"
-      class="text-xs font-semibold px-4 py-2 rounded-full">
-      <span x-text="k.l"></span><span class="tabular opacity-60 ml-1" x-text="k.n"></span>
-    </button>
-  </template>
+            <div class="relative mt-3">
+              <input x-ref="locSearch" x-model="locQuery" @keydown.enter.prevent="useSearchAsCustom()" placeholder="Search or enter any address…" aria-label="Search locations or enter an address" class="input input loc-search rounded-xl">
+              <?php /* Offered only for the pickup field. It saves typing an address
+                       from a kerb at midnight, which is worth doing for a pick-up
+                       and not worth doing for a drop-off or an extra stop, where
+                       the address is usually already known. The endpoint is on the
+                       button so the markup states where it posts. */ ?>
+              <button type="button" x-show="locFor === 'pickup'"
+                      x-on:click="useMyLocation($el.dataset.locateUrl)"
+                      :disabled="locBusy"
+                      class="loc-gps" data-locate-url="<?= e(url('services/locate.php')) ?>"
+                      aria-label="Use my current location" title="Use my current location">
+                <?php /* Inline SVG rather than an fa-* class: this picker lives on the public
+                         layout, which does not load FontAwesome at all, so an icon
+                         font reference here renders an empty box. Drawing the two
+                         glyphs keeps the button identical on all four layouts and
+                         adds no font request to a page that has none. */ ?>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                     stroke-linecap="round" aria-hidden="true" focusable="false" x-show="!locBusy" class="loc-gps-i">
+                  <circle cx="12" cy="12" r="7"></circle>
+                  <circle cx="12" cy="12" r="1.6"></circle>
+                  <path d="M12 1.8v3.4M12 18.8v3.4M1.8 12h3.4M18.8 12h3.4"></path>
+                </svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                     stroke-linecap="round" aria-hidden="true" focusable="false" x-show="locBusy" class="loc-gps-i loc-gps-spin">
+                  <path d="M12 3a9 9 0 1 0 9 9"></path>
+                </svg>
+              </button>
             </div>
+            <p x-show="locError" class="text-xs text-[#f3c1bd] px-1 mt-2" x-text="locError" role="alert"></p>
+<div class="flex gap-2 mt-3 loc-types no-scrollbar" role="group" aria-label="Location type" tabindex="0"
+         :class="locQuery.trim() !== '' ? 'is-idle' : ''"
+         :title="locQuery.trim() !== '' ? 'Not filtering while you search - every match is shown' : 'Narrow the list you are browsing'">
+    <template x-for="k in locKinds()" :key="k.v">
+      <button type="button" class="loc-chip" @click="toggleLocType(k.v)" :aria-pressed="locTypeOn(k.v)">
+        <span x-text="k.l"></span><span class="loc-chip-n" x-text="k.n"></span>
+      </button>
+    </template>
+              </div>
             <button type="button" x-show="locQuery.trim() !== ''" @click="useSearchAsCustom()" class="w-full mt-2 border border-dashed border-[#C8A96B] rounded-xl py-2.5 text-xs text-[#F3D4A6]">Use “<span x-text="locQuery.trim()"></span>” as address</button>
             <p x-show="routeErr" class="text-xs text-[#f3c1bd] px-1 mt-2" x-text="routeErr" role="alert"></p>
             <div class="overflow-y-auto no-scrollbar mt-2 -mx-1 px-1">
@@ -333,6 +360,7 @@ ob_start();
          optional. It has to come before the script that builds the component,
          because the object literal is evaluated the moment that script runs. */ ?>
 <script type="application/json" id="locData"><?= locations_json($pdo) ?></script>
+  <script src="<?= asset('js/locate.js?v=20261014a') ?>"></script>
 <script>
 window.__locations = (function () {
   var el = document.getElementById('locData');
@@ -342,8 +370,12 @@ window.__locations = (function () {
 </script>
 <script>
 function tripSlip() {
-  return {
-    tab: 'point_to_point',
+    return {
+      /* "Use where I am now" comes from locate.js, which the booking page mixes
+         into bookingPage(). Both pickers are separate implementations of the
+         same thing, and this is the one behaviour they now share. */
+      ...(window.__locateMixin || {}),
+      tab: 'point_to_point',
     trp: 'one_way',
     dir: 'to_airport',
     hours: 2,

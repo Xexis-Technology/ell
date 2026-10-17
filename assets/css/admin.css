@@ -200,6 +200,16 @@ table.data tbody tr:hover{background:#1a1a1d}
 .dp-carstate{grid-column:2;font-family:var(--dp-mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--dp-go)}
 .dp-car.is-taken .dp-carstate{color:#7a7a78}
 
+/* Foot of a truncated Crew/Cars panel. The pill reuses .dash-more rather than
+   inventing a second button, so "View all N" looks the same everywhere in this
+   admin. The count beside it is deliberately plain: the pill already says how
+   many exist, and this line only has to admit that the list is partial rather
+   than quietly implying those three are the whole fleet. */
+.dp-morefoot{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:.85rem 0 0;padding-top:.75rem;border-top:1px solid #1f1f21}
+.dp-morefoot .dash-more{padding:.4rem .8rem;font-size:.74rem}
+.dp-morefoot .dash-more i{font-size:.62rem}
+.dp-moreless{font-family:var(--dp-mono);font-size:.64rem;color:#6a6a68;white-space:nowrap}
+
 .dp-moves{list-style:none;margin:0;padding:0;display:grid;gap:.75rem}
 .dp-move-what{font-size:.84rem;color:#D5D5D2;display:flex;flex-wrap:wrap;gap:.15rem .5rem;align-items:baseline}
 .dp-move-what i{font-size:.6rem;color:#5f5f5f}

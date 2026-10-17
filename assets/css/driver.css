@@ -71,12 +71,19 @@ body.driver{background:#0A0A0C;color:#F5F5F3;font-size:17px;line-height:1.5;-web
 .drv-side-out button:hover{background:#161618;color:#e6e6e4;border-color:#262628}
 .drv-side-out button i{font-size:.8rem}
 
-/* ---------------- clearance band ---------------- */
-.clr-band{display:flex;align-items:center;gap:.6rem;padding:.85rem 1rem;font-size:.92rem;font-weight:600;
-  line-height:1.4;border-bottom:1px solid;position:relative}
+/* ---------------- clearance band ----------------
+   A status strip, not a banner. It sits in the sticky header on every driver
+   page, so its height is paid for on every screen and at every scroll depth -
+   it was .85rem of padding and .92rem of type, which stacked up to 108px of
+   top bar on a phone before any content was reached. Everything here is
+   trimmed to read as one dense line, and the phone case no longer promotes the
+   "Finish setup" link to a full-width block, which was the single biggest
+   contributor. */
+.clr-band{display:flex;align-items:center;gap:.5rem;padding:.42rem .7rem;font-size:.8rem;font-weight:600;
+  line-height:1.3;border-bottom:1px solid;position:relative}
 .clr-band span{flex:1;min-width:0}
-.clr-band>i{flex-shrink:0;font-size:1rem}
-.clr-band a{flex-shrink:0;padding:.5rem .9rem;border-radius:999px;font-size:.82rem;font-weight:700;
+.clr-band>i{flex-shrink:0;font-size:.82rem}
+.clr-band a{flex-shrink:0;padding:.28rem .6rem;border-radius:999px;font-size:.74rem;font-weight:700;
   text-decoration:none;white-space:nowrap}
 .clr-band.is-ok{background:#141c16;color:#b9e6c7;border-color:#2c4a35}
 .clr-band.is-ok a{border:1px solid #2c4a35;color:#b9e6c7}
@@ -87,28 +94,41 @@ body.driver{background:#0A0A0C;color:#F5F5F3;font-size:17px;line-height:1.5;-web
 
 /* Waiting on paperwork. Previously a flat near-black brown that read as disabled.
    It gets a real amber field and a left rule instead, matching the way status is
-   drawn elsewhere in this portal - a rule reads at a glance, a tint does not. */
+   drawn elsewhere in this portal - a rule reads at a glance, a tint does not.
+   The rule is 3px on a shorter strip, so it is pulled in to 2px to keep the
+   same visual weight without adding a row of height. */
 .clr-band.is-wait{
   background:linear-gradient(180deg,#241a0e,#1c1409);
   color:#f4d7a6;border-bottom-color:#7a5822;
-  box-shadow:inset 3px 0 0 #E8A33D;
-  padding-left:1.15rem}
+  box-shadow:inset 2px 0 0 #E8A33D;
+  padding-left:.85rem}
 .clr-band.is-wait a{background:#E8A33D;color:#1c1409;border-color:transparent}
 .clr-band.is-wait a:hover{background:#f0b45c}
 
-/* Dismiss control. Sized and spaced like a real control, not a stray glyph, and
-   it only ever appears on a band the driver can act on. */
-.clr-x{flex-shrink:0;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;
-  border:1px solid transparent;border-radius:8px;background:transparent;color:inherit;
-  font-size:.7rem;cursor:pointer;opacity:.75}
+/* Dismiss control. Sized down to keep the strip slim, but not at the cost of a
+   tap target a thumb can miss: the visible button is 26px and an invisible
+   ::after grows the hittable area to 44px, which is the guidance figure. The
+   growth is what lets the drawn box shrink without making it harder to use. */
+.clr-x{flex-shrink:0;position:relative;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:7px;background:transparent;color:inherit;
+  font-size:.62rem;cursor:pointer;opacity:.75}
+.clr-x::after{content:"";position:absolute;inset:-9px}
+/* A band carrying the close button is taller purely because that button is:
+   26px of control plus the usual .42rem of padding lands at 39px against 31px
+   without it. Pulling the padding back is the only way to close that gap
+   without shrinking a control that already needs its invisible hit area. */
+.clr-band:has(.clr-x){padding-top:.26rem;padding-bottom:.26rem}
 .clr-x:hover{opacity:1;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
 .clr-x:focus-visible{outline:2px solid #E8A33D;outline-offset:2px}
 
 @media (max-width:520px){
-  .clr-band{flex-wrap:wrap;font-size:.88rem}
-  .clr-band a{width:100%;text-align:center;margin-top:.15rem;padding:.7rem 1rem;font-size:.9rem}
-  .clr-x{position:absolute;top:.55rem;right:.5rem}
-  .clr-band.is-wait{padding-left:1.15rem;padding-right:2.6rem}
+  /* Still one line. The link stays an inline pill beside the message instead of
+     claiming a row of its own, and the text is allowed to wrap under it rather
+     than the button dictating the height of the whole strip. */
+  .clr-band{flex-wrap:wrap;font-size:.76rem;gap:.4rem;padding:.38rem .6rem}
+  .clr-band i{font-size:.76rem}
+  .clr-band a{padding:.26rem .55rem;font-size:.72rem}
+  .clr-band.is-wait{padding-left:.75rem;padding-right:2.1rem}
 }
 
 /* ---------------- header ---------------- */
@@ -547,23 +567,20 @@ select.drv-input option{background:#141416;color:#F5F5F3}
 .acct-h{font-family:"Cormorant Garamond",Georgia,serif;font-size:clamp(2.1rem,7vw,3rem);
   font-weight:600;line-height:1.02;color:#F3D4A6;margin:0 0 1.1rem;letter-spacing:-.01em}
 
-.crd-pair{display:grid;gap:1rem;grid-template-columns:1fr}
-@media (min-width:720px){.crd-pair{grid-template-columns:1fr 1fr;gap:1.1rem}}
+.crd-pair{display:grid;gap:.8rem;grid-template-columns:1fr}
+@media (min-width:720px){.crd-pair{grid-template-columns:1fr 1fr;gap:.9rem}}
 
-.crd{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:.85rem;
-  padding:1.15rem 1.15rem 1.15rem 1.6rem;border-radius:16px;
-  background:#141416;border:1px solid #2b2b2e;
-  /* Light falling across a laminated card. Barely there, but it stops the two
-     objects reading as flat rectangles of grey. */
-  background-image:linear-gradient(154deg,rgba(243,212,166,.055),transparent 44%)}
+/* Simplified. This used to be a lamination effect: a light falling across the
+   card at 154deg, a punched perforation strip down the left edge, and a dashed
+   score line beside it. Three devices to say "this is a physical card", on a
+   phone where the card is 358px wide and mostly empty. The score line survived
+   longest as pure noise.
 
-/* The tear strip down the edge of a paper licence. Desk-coloured bites punched
-   out of the card, repeating down its whole height. */
-.crd-perf{position:absolute;left:0;top:0;bottom:0;width:11px;pointer-events:none;
-  background-image:radial-gradient(circle at 0 5.5px,#0A0A0C 2.7px,transparent 2.9px);
-  background-size:11px 11px;background-repeat:repeat-y}
-.crd::after{content:"";position:absolute;left:11px;top:.9rem;bottom:.9rem;width:1px;
-  background:repeating-linear-gradient(180deg,#333336 0 4px,transparent 4px 9px)}
+   What earns its place here instead is the two facts a driver actually cannot
+   read off a photograph at preview size - the licence number and the expiry
+   date - because those are the numbers the desk checks. */
+.crd{display:flex;flex-direction:column;gap:.7rem;
+  padding:.9rem;background:#141416;border:1px solid #2b2b2e;border-radius:14px}
 
 .crd-head{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem}
 .crd-k{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.63rem;letter-spacing:.17em;
@@ -574,12 +591,14 @@ select.drv-input option{background:#141416;color:#F5F5F3}
 .crd-state.is-wait{color:#C8A96B}
 .crd-state.is-bad{color:#B4554F}
 
+/* No aspect-ratio. It pinned the licence at 3:2 and the picture at 1:1, which on
+   a stacked phone gave two cards of 208px and 312px for no reason a driver could
+   put a name to. Now the slot simply fills whatever height the grid row gives
+   it, so the pair always lines up, and an empty card stays short instead of
+   reserving 200px for an icon. */
 .crd-slot{position:relative;display:flex;align-items:center;justify-content:center;
-  /* Grows to fill the stretched card so both previews land the same height side
-     by side, and falls back to the aspect ratio when the cards are stacked. */
-  flex:1 1 auto;min-height:10rem;aspect-ratio:3/2;
-  border-radius:11px;overflow:hidden;background:#0c0c0e;border:1px solid #242426}
-.crd-slot.is-face{aspect-ratio:1}
+  flex:1 1 auto;min-height:7.5rem;max-height:15rem;
+  border-radius:10px;overflow:hidden;background:#0c0c0e;border:1px solid #242426}
 /* A licence is letterboxed, not cropped: the number has to stay readable at
    preview size. A face is cropped, because a face in a letterbox looks like a
    mistake. */
@@ -591,9 +610,20 @@ select.drv-input option{background:#141416;color:#F5F5F3}
    an absolutely positioned box otherwise paints over the photo standing in for
    it, which is the opposite of what it is for. */
 .crd-img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;display:block}
-.crd-empty{display:flex;flex-direction:column;align-items:center;gap:.4rem;
-  font-size:.8rem;color:#6d6d70;text-align:center}
-.crd-empty i{font-size:1.15rem;color:#3f3f42}
+.crd-empty{display:flex;flex-direction:column;align-items:center;gap:.35rem;
+  font-size:.78rem;color:#6d6d70;text-align:center}
+.crd-empty i{font-size:1.05rem;color:#3f3f42}
+
+/* The two facts under each preview. Two columns from 420px, because a label
+   stacked over a value reads as four separate things on a phone and the pairing
+   is the whole point. */
+.crd-facts{display:grid;gap:.4rem .9rem;grid-template-columns:1fr}
+@media (min-width:420px){.crd-facts{grid-template-columns:1fr 1fr}}
+.crd-fact{min-width:0}
+.crd-fact-k{display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.56rem;
+  letter-spacing:.15em;text-transform:uppercase;color:#6d6d70;margin-bottom:.1rem}
+.crd-fact-v{display:block;font-size:.84rem;color:#E5E5E3;line-height:1.35;overflow-wrap:anywhere}
+.crd-fact-v.is-none{color:#6d6d70}
 
 .crd-shoot{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;
   min-height:54px;padding:.75rem .9rem;border-radius:12px;cursor:pointer;
@@ -900,6 +930,28 @@ select.drv-input option{background:#141416;color:#F5F5F3}
 
 /* ---------------- record form ---------------- */
 .acct-form{margin:0 0 2.4rem}
+
+/* The way out of the page.
+   It inherited .drv-btn's width:100% and min-height:56px, which is right for a
+   form action and wrong for a link that only navigates: a full-width, 56px-tall
+   underlined sentence reads as a broken button. This is inline instead, so its
+   width is its label, and it keeps a 44px tap target without the slab.
+
+   Drawn as an outlined pill rather than a bare underline so it is visibly a
+   control you can press, and quiet enough not to compete with the gold Save
+   above it. The arrow shifts on hover, which is the only cue that says
+   "backwards" in a portal that has no browser chrome to lean on. */
+.acct-back{margin:0 0 2.2rem}
+.drv-back{display:inline-flex;align-items:center;gap:.55rem;width:auto;
+  min-height:44px;padding:.55rem 1.05rem;border-radius:999px;
+  border:1px solid #2f2f32;background:transparent;color:#cfcfcf;
+  font-family:inherit;font-size:.9rem;font-weight:600;text-decoration:none;
+  transition:border-color .15s,color .15s,background-color .15s}
+.drv-back:hover{border-color:#4a4a4d;color:#fff;background:#141416}
+.drv-back:focus-visible{outline:2px solid #D9B978;outline-offset:2px}
+.drv-back i{font-size:.78rem;color:#D9B978;transition:transform .15s ease}
+.drv-back:hover i{transform:translateX(-3px)}
+@media (prefers-reduced-motion:reduce){.drv-back i{transition:none}}
 .acct-grid{display:grid;gap:0 .9rem;grid-template-columns:1fr}
 @media (min-width:720px){.acct-grid{grid-template-columns:1fr 1fr}}
 .acct-set{border:1px solid #2b2b2e;border-radius:14px;padding:.95rem 1rem 1.1rem;margin:0 0 1.1rem}

@@ -1,8 +1,12 @@
 // Booking page pickers: location popup, calendar, time spinner (same UX as homepage widget).
 function bookingPage(pref) {
-  pref = pref || {};
-  return {
-    service: pref.service || 'point_to_point',
+    pref = pref || {};
+    return {
+      /* "Use where I am now" comes from locate.js, which the homepage mixes into
+         its own tripSlip() component. Both pickers are separate implementations
+         of the same thing, and this is the one behaviour they now share. */
+      ...(window.__locateMixin || {}),
+      service: pref.service || 'point_to_point',
     trp: pref.trip || 'one_way',
     dir: pref.direction || '',
     hours: pref.hours || 2,
@@ -132,7 +136,7 @@ function bookingPage(pref) {
     routeErr: '',
     openLoc(which, i) {
       this.locFor = which; this.stopIdx = (i === undefined ? null : i);
-        this.locQuery = ''; this.locTypes = []; this.routeErr = ''; this.locOpen = true;
+        this.locQuery = ''; this.locTypes = []; this.routeErr = ''; this.locError = ''; this.locOpen = true;
       this.$nextTick(() => { if (this.$refs.locSearch) this.$refs.locSearch.focus(); });
     },
     setLocValue(v) {

@@ -100,7 +100,8 @@ ob_start();
          are not optional. */ ?>
 <script type="application/json" id="locData"><?= locations_json($pdo) ?></script>
 <div class="max-w-6xl mx-auto px-4 py-10" x-data="bookingPage({service: '<?= e($prefService) ?>', pickup: <?= e(json_encode($prefPickup)) ?>, dest: <?= e(json_encode($prefDest)) ?>, date: '<?= e($prefDate) ?>', time: '<?= e($prefTime) ?>', pax: <?= $prefPax ?>, bags: <?= $prefBags ?>, trip: '<?= e($prefTrip) ?>', direction: '<?= e($prefDir) ?>', hours: <?= $prefHours ?>, hasLuggage: <?= $hasParam('luggage') ? 'true' : 'false' ?>, guest: <?= current_user('customer') ? 'false' : 'true' ?>, vid: <?= (int)($firstVeh['id'] ?? 0) ?>, vname: <?= e(json_encode(trim(($firstVeh['make'] ?? '') . ' ' . ($firstVeh['model'] ?? '')) ?: 'Select vehicle')) ?>, vmeta: <?= e(json_encode($firstVehMeta)) ?>, stops: <?= json_encode(array_values($prefStops), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>})">
-<script src="<?= asset('js/booking.js') ?>"></script>
+<script src="<?= asset('js/locate.js?v=20261014a') ?>"></script>
+  <script src="<?= asset('js/booking.js') ?>"></script>
   <p class="eyebrow">Booking</p>
   <h1 class="font-display text-4xl md:text-5xl text-[#F9F9F9] mt-2">Book your ride</h1>
   <p class="text-sm text-[#AB8868] mt-2">Pricing mode: <strong><?= e($mode === 'hourly' ? 'Hourly' : 'Per-Mile') ?></strong><?= $mapsEnabled ? ' · Maps enabled' : ' · Manual mileage verified by our team' ?></p>
@@ -374,15 +375,36 @@ ob_start();
         <h3 class="font-display text-xl text-[#F3D4A6]">Choose location</h3>
         <button type="button" @click="locOpen = false" aria-label="Close" class="text-[#AB8868] hover:text-white text-xl px-2">✕</button>
       </div>
-      <input x-ref="locSearch" x-model="locQuery" @keydown.enter.prevent="useSearchAsCustom()" placeholder="Search or enter any address…" aria-label="Search locations or enter an address" class="input rounded-xl mt-3">
-      <div class="flex gap-2 mt-3 loc-types" role="group" aria-label="Location type"
+      <div class="relative mt-3">
+        <input x-ref="locSearch" x-model="locQuery" @keydown.enter.prevent="useSearchAsCustom()" placeholder="Search or enter any address…" aria-label="Search locations or enter an address" class="input input loc-search rounded-xl">
+        <?php /* Offered only for the pickup field. Same reasoning as the homepage
+                 picker, which is the same picker written twice. */ ?>
+        <button type="button" x-show="locFor === 'pickup'"
+                x-on:click="useMyLocation($el.dataset.locateUrl)"
+                :disabled="locBusy"
+                class="loc-gps" data-locate-url="<?= e(url('services/locate.php')) ?>"
+                aria-label="Use my current location" title="Use my current location">
+          <?php /* Inline SVG, not an fa-* class: this picker is also on the public layout,
+                 which loads no icon font. */ ?>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" aria-hidden="true" focusable="false" x-show="!locBusy" class="loc-gps-i">
+            <circle cx="12" cy="12" r="7"></circle>
+            <circle cx="12" cy="12" r="1.6"></circle>
+            <path d="M12 1.8v3.4M12 18.8v3.4M1.8 12h3.4M18.8 12h3.4"></path>
+          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" aria-hidden="true" focusable="false" x-show="locBusy" class="loc-gps-i loc-gps-spin">
+            <path d="M12 3a9 9 0 1 0 9 9"></path>
+          </svg>
+        </button>
+      </div>
+      <p x-show="locError" class="text-xs text-[#f3c1bd] px-1 mt-2" x-text="locError" role="alert"></p>
+<div class="flex gap-2 mt-3 loc-types no-scrollbar" role="group" aria-label="Location type" tabindex="0"
        :class="locQuery.trim() !== '' ? 'is-idle' : ''"
        :title="locQuery.trim() !== '' ? 'Not filtering while you search - every match is shown' : 'Narrow the list you are browsing'">
   <template x-for="k in locKinds()" :key="k.v">
-    <button type="button" @click="toggleLocType(k.v)" :aria-pressed="locTypeOn(k.v)"
-      :class="locTypeOn(k.v) ? 'bg-[#D9B978] text-[#0A0A0C] border border-[#D9B978]' : 'border border-[#3a3a3d] text-[#F5F5F3]'"
-      class="text-xs font-semibold px-4 py-2 rounded-full">
-      <span x-text="k.l"></span><span class="tabular opacity-60 ml-1" x-text="k.n"></span>
+    <button type="button" class="loc-chip" @click="toggleLocType(k.v)" :aria-pressed="locTypeOn(k.v)">
+      <span x-text="k.l"></span><span class="loc-chip-n" x-text="k.n"></span>
     </button>
   </template>
       </div>

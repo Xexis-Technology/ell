@@ -17,8 +17,8 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
-<link rel="stylesheet" href="<?= asset('css/admin.css?v=20261014a') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014f') ?>">
+<link rel="stylesheet" href="<?= asset('css/admin.css?v=20261014b') ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.core.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">

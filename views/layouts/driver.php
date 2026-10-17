@@ -48,8 +48,8 @@ $unseen = ($driverUser && $pdoRef)
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
-<link rel="stylesheet" href="<?= asset('css/driver.css?v=20261011c') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014f') ?>">
+<link rel="stylesheet" href="<?= asset('css/driver.css?v=20261014c') ?>">
 </head>
 <body class="driver font-ui<?= $authPage ? ' drv-auth' : '' ?><?= $widePage ? ' is-wide' : '' ?>">
 <?php if ($driverUser): ?>
@@ -105,7 +105,25 @@ $unseen = ($driverUser && $pdoRef)
     <?php /* The clearance band travels with the header, so "am I cleared?" is
              answerable at any scroll depth on any page - not just at the top. */ ?>
     <?php if ($clearance): ?>
-      <?php $dismissable = !$clearance['cleared']; ?>
+      <?php /* Only the green band is dismissable, and that is the whole rule.
+
+             is-ok is good news: "cleared to drive, licence valid for another 300
+             days" is not an action item, and leaving it pinned above every page
+             for the rest of the driver's career trains people to ignore the
+             strip entirely. So it can be swatted away.
+
+             Everything else must not be. A warn band ("your licence expires in
+             10 days"), a wait band ("the office has not cleared you yet") and a
+             bad band are the reason this strip exists at all - a warning you can
+             dismiss is a warning that gets dismissed and then missed. They have
+             no close button, and no dismissal script is emitted for them either,
+             so there is no code path that can hide them.
+
+             The dismissal is remembered per reason, not per driver: the key is
+             built from the band text, so hiding "cleared to drive" does not hide
+             next month's "your licence expires in 10 days". The warning arrives
+             fresh, undismissable, on the day it becomes true. */ ?>
+      <?php $dismissable = ($clearance['tone'] === 'ok'); ?>
     <div class="clr-band is-<?= e($clearance['tone']) ?>" role="status"
          data-clr-band data-reason="<?= e($clearance['reason']) ?>">
       <i class="fa-solid <?= $clearance['tone'] === 'ok' ? 'fa-circle-check' : ($clearance['tone'] === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-exclamation') ?>" aria-hidden="true"></i>
@@ -115,8 +133,6 @@ $unseen = ($driverUser && $pdoRef)
       <?php if (!$clearance['cleared'] && !$onSetup): ?>
         <a href="<?= url('driver/setup.php') ?>">Finish setup</a>
       <?php endif; ?>
-      <?php /* Only offered while something is outstanding. A green "you are
-               cleared" banner is good news and needs no dismissing. */ ?>
       <?php if ($dismissable): ?>
         <button type="button" class="clr-x" data-clr-dismiss aria-label="Hide this message">
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>

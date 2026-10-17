@@ -112,7 +112,7 @@ try { $favicon = media_url(setting($pdo, 'favicon', '')); } catch (Throwable) {}
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios@1/dist/axios.min.js"></script>
-<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014c') ?>">
+<link rel="stylesheet" href="<?= asset('css/app.css?v=20261014f') ?>">
 <script src="<?= asset('js/app.js') ?>" defer></script>
 <script src="<?= asset('js/alerts.js?v=20261014b') ?>" defer></script>
 <script type="application/ld+json">

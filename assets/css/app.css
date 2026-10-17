@@ -182,12 +182,112 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
    query they are not filtering anything, so they say so by going quiet rather
    than sitting there looking selected.
    ======================================================================== */
-.loc-types{transition:opacity .16s}
+/* ===========================================================================
+   "Use my current location" beside the picker search box.
+
+   Sits inside the field on the right, the way a trailing adornment does, so it
+   reads as part of the search rather than as another control competing with it.
+   The input carries pr-12 to clear it.
+
+   40px square rather than the 44px the primary controls use: it is a shortcut,
+   not a step in a task, and it sits inside something already tappable. Its own
+   hit area is padded out with an inset ::after so the effective target reaches
+   44px without drawing a box that size.
+   =========================================================================== */
+/* top:50% rather than a calculated offset. The button is positioned against the
+   .relative wrapper, so any guess that also accounted for the field's own
+   top margin counted it twice and lifted the button 12px above the input - it
+   sat half over the heading. The spacing margin now lives on the wrapper
+   instead, which makes the wrapper exactly as tall as the field inside it and
+   puts 50% on the field's true centre with no arithmetic at all. */
+.loc-gps{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #2f2f32;border-radius:10px;background:#141416;color:#C8A96B;
+  cursor:pointer;padding:0;transition:border-color .15s,color .15s,background-color .15s}
+.loc-gps::after{content:"";position:absolute;inset:-2px}
+.loc-gps:hover:not([disabled]){border-color:#D9B978;color:#F3D4A6;background:#1b1b1e}
+.loc-gps:focus-visible{outline:2px solid #D9B978;outline-offset:2px}
+.loc-gps[disabled]{opacity:.6;cursor:progress}
+.loc-gps i{font-size:.9rem;line-height:1}
+.loc-gps-i{width:17px;height:17px;display:block}
+.loc-gps-spin{animation:loc-gps-spin .7s linear infinite}
+@keyframes loc-gps-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.loc-gps-spin{animation-duration:2s}}
+
+/* The padding goes on .input.loc-search rather than as a Tailwind pr-12 on the
+   element. Both are one class, so source order decides, and .input's padding
+   shorthand is at the top of this file while the Tailwind utility is injected
+   by the CDN - the shorthand was winning and the button sat on top of the text
+   instead of beside it. Two classes is unambiguous. 52px clears the 40px
+   button plus the 6px inset and the gap. */
+.input.loc-search{padding-right:52px}
+
+@media(prefers-reduced-motion:reduce){.loc-gps{transition:none}}
+
+/* ===========================================================================
+   Location-type chips in the picker popup (homepage + booking)
+
+   This row was 427px of chips inside a box that is 356px on a phone and 286px
+   on a 320px phone, with overflow-x left at its default of visible. Nothing
+   scrolled, nothing wrapped, and the chips refused to shrink - so the last one
+   simply ran off the edge of the panel: 54px past it on a 390px phone, 124px on
+   a 320px one, with "Places" and its count unreadable and unclickable. The row
+   now scrolls.
+
+   Padding is a hair above and below the chips so a focus ring or the pressed
+   state is never clipped by overflow:hidden on its own edges.
+   =========================================================================== */
+.loc-types{
+  display:flex;flex-wrap:nowrap;align-items:center;
+  gap:.4rem;
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;      /* a sideways flick must not scroll the page */
+  scroll-snap-type:x proximity;
+  /* flex-shrink:0 is not cosmetic. The popup is a max-h-[85vh] flex column, so
+     once the search box, this row, the "use as address" button and the result
+     list add up to more than the cap, this row was the thing that got squashed -
+     30.2px of chip squeezed into a 22.8px box, and overflow-y:hidden then cut
+     3.7px off the top and the bottom of every chip. The result list below is
+     the part meant to give way; it already scrolls. */
+  flex:0 0 auto;
+  /* .3rem of vertical padding, not .2rem: a focused chip draws a 2px outline at
+     2px offset, which needs 4px of room per side or overflow-y clips the ring. */
+  padding:.3rem .1rem;
+  transition:opacity .16s}
 .loc-types.is-idle{opacity:.35}
 .loc-types.is-idle button{cursor:default}
+.loc-types.is-idle button:hover{border-color:#3a3a3d;background:transparent;color:#F5F5F3}
+/* The row carries tabindex="0" so it can be scrolled from the keyboard - a
+   scroll container with no focus ring is a keyboard trap that looks identical to
+   one that is not there. */
+.loc-types:focus-visible{outline:2px solid #D9B978;outline-offset:2px;border-radius:10px}
+
+/* flex:0 0 auto is the load-bearing part. Flex items shrink by default, which is
+   what stopped this from merely looking wrong: given the choice between a
+   narrow chip and an overflow, the chips squeezed and stayed inside the box
+   instead of scrolling. */
+.loc-types .loc-chip{flex:0 0 auto;scroll-snap-align:start;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:.3rem;
+  padding:.45rem .8rem;border-radius:999px;border:1px solid #3a3a3d;
+  background:transparent;color:#F5F5F3;
+  font-family:inherit;font-size:.72rem;font-weight:600;line-height:1.2;
+  cursor:pointer;
+  transition:border-color .14s,background-color .14s,color .14s}
+.loc-types .loc-chip:hover{border-color:#D9B978;color:#F3D4A6}
+.loc-types .loc-chip:focus-visible{outline:2px solid #D9B978;outline-offset:2px}
+/* The pressed look is driven off aria-pressed, the same attribute that carries
+   the state to a screen reader, so what is announced and what is drawn cannot
+   drift apart the way a parallel Alpine class binding can. */
+.loc-types .loc-chip[aria-pressed="true"]{background:#D9B978;border-color:#D9B978;color:#0A0A0C}
+.loc-types .loc-chip[aria-pressed="true"]:hover{background:#F3D4A6;border-color:#F3D4A6;color:#0A0A0C}
+.loc-chip-n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.64rem;
+  font-variant-numeric:tabular-nums;opacity:.55}
+.loc-chip[aria-pressed="true"] .loc-chip-n{opacity:.7}
 
 @media(prefers-reduced-motion:reduce){
-  .loc-types{transition:none}
+.loc-types{transition:none}
+.loc-types .loc-chip{transition:none}
 }
 /* ===========================================================================
    Credit line in the newsletter block (views/partials/credits.php)

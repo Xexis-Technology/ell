@@ -229,7 +229,6 @@ ob_start();
   <div class="crd-pair">
 
     <section class="crd crd-lic" aria-labelledby="crd-lic-h">
-      <span class="crd-perf" aria-hidden="true"></span>
       <header class="crd-head">
         <span class="crd-k" id="crd-lic-h">Driving licence</span>
         <span class="crd-state <?= $licShot ? (($licShot['status'] === 'rejected') ? 'is-bad' : 'is-wait') : 'is-none' ?>">
@@ -241,13 +240,26 @@ ob_start();
         <?php if ($licShot): ?>
           <img class="crd-img" src="<?= e(media_url((string)$licShot['file_path'])) ?>" alt="The licence photo on your file" decoding="async" onerror="this.remove()">
         <?php else: ?>
-          <span class="crd-empty"><i class="fa-regular fa-image" aria-hidden="true"></i> No photo yet</span>
+          <span class="crd-empty"><i class="fa-regular fa-image" aria-hidden="true"></i> Nothing on file</span>
         <?php endif; ?>
+      </div>
+
+      <?php /* The two numbers the desk actually reads off this document. A licence
+               photographed at preview size is not a place to confirm a serial, so
+               they are printed here instead of left to the desk's own zoom. */ ?>
+      <div class="crd-facts">
+        <p class="crd-fact">
+          <span class="crd-fact-k">Licence number</span>
+          <span class="crd-fact-v<?= empty($fresh['license_number']) ? ' is-none' : '' ?>"><?= e((string)($fresh['license_number'] ?: 'Not on file')) ?></span>
+        </p>
+        <p class="crd-fact">
+          <span class="crd-fact-k">Expires</span>
+          <span class="crd-fact-v<?= empty($fresh['license_expiry']) ? ' is-none' : '' ?>"><?= $fresh['license_expiry'] ? e(date('j M Y', strtotime((string)$fresh['license_expiry']))) : 'Not on file' ?></span>
+        </p>
       </div>
     </section>
 
     <section class="crd crd-pic" aria-labelledby="crd-pic-h">
-      <span class="crd-perf" aria-hidden="true"></span>
       <header class="crd-head">
         <span class="crd-k" id="crd-pic-h">Your picture</span>
         <span class="crd-state <?= $picShot ? (($picShot['status'] === 'rejected') ? 'is-bad' : 'is-wait') : 'is-none' ?>">
@@ -260,6 +272,20 @@ ob_start();
         <?php if ($picShot): ?>
           <img class="crd-img" src="<?= e(media_url((string)$picShot['file_path'])) ?>" alt="The picture on your file" decoding="async" onerror="this.remove()">
         <?php endif; ?>
+      </div>
+
+      <?php /* This picture goes on the guest manifest, so the one thing worth
+               confirming on screen is that it is the right person under the right
+               name. */ ?>
+      <div class="crd-facts">
+        <p class="crd-fact">
+          <span class="crd-fact-k">Name on file</span>
+          <span class="crd-fact-v<?= empty($fresh['name']) ? ' is-none' : '' ?>"><?= e((string)($fresh['name'] ?: 'Not on file')) ?></span>
+        </p>
+        <p class="crd-fact">
+          <span class="crd-fact-k">Crew reference</span>
+          <span class="crd-fact-v<?= empty($fresh['reference']) ? ' is-none' : '' ?>"><?= e((string)($fresh['reference'] ?: 'Not assigned')) ?></span>
+        </p>
       </div>
     </section>
 
@@ -369,7 +395,14 @@ ob_start();
     <button class="drv-btn drv-btn-line">Change password</button>
   </form>
 
-  <a class="drv-btn drv-btn-quiet" href="<?= url('driver/dashboard.php') ?>">Back to my rides</a>
+  <?php /* Not a third action on the form, so not a .drv-btn. It inherits width:100%
+           and a 56px height from that family, which turns a link that only
+           navigates into a full-width underlined slab. */ ?>
+  <p class="acct-back">
+    <a class="drv-back" href="<?= url('driver/dashboard.php') ?>">
+      <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to my rides
+    </a>
+  </p>
 
   <?php /*
     Both cameras live at the end of the page rather than on the card they belong
